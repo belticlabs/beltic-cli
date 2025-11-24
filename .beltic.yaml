@@ -1,0 +1,19 @@
+version: '1.0'
+agent:
+  paths:
+    include:
+    - src/**
+    - lib/**
+    - Cargo.toml
+    - package.json
+    - '*.md'
+    exclude:
+    - '**/*.test.*'
+    - '**/*.spec.*'
+    - '**/test/**'
+    - '**/tests/**'
+    - '**/node_modules/**'
+    - '**/target/**'
+    - '**/.git/**'
+  deployment:
+    type: standalone

@@ -1,0 +1,118 @@
+# Beltic Configuration File Example
+# Copy this to .beltic.yaml and customize for your agent
+
+version: "1.0"
+
+agent:
+  # Define which files belong to this agent
+  paths:
+    include:
+      # For standalone agents - include all source files
+      - "src/**"
+      - "Cargo.toml"
+      - "README.md"
+
+      # For monorepo agents - specify agent directory
+      # - "agents/my-agent/**"
+      # - "shared/utils/**"
+
+      # For serverless functions
+      # - "lambda/**"
+      # - "serverless.yml"
+
+      # For plugins/extensions
+      # - "src/plugin/**"
+      # - "manifest.json"
+
+    exclude:
+      # Common exclusions
+      - "**/*.test.*"
+      - "**/*.spec.*"
+      - "**/test/**"
+      - "**/tests/**"
+      - "**/node_modules/**"
+      - "**/target/**"
+      - "**/.git/**"
+      - "**/dist/**"
+      - "**/build/**"
+      - "**/*.log"
+      - "**/.env*"
+
+  # Track dependencies that affect agent behavior (optional)
+  dependencies:
+    # Other modules in your repository (for monorepos)
+    internal:
+      # - "../shared-utils"
+      # - "../auth-module"
+      # - "../common-prompts"
+
+    # External packages that are core to agent functionality
+    external:
+      # - "openai@^3.0.0"
+      # - "langchain@^0.1.0"
+      # - "anthropic@^1.0.0"
+
+  # Deployment context (optional but recommended)
+  deployment:
+    # Type of deployment architecture
+    type: "standalone"  # Options: standalone|monorepo|embedded|plugin|serverless
+
+    # For embedded agents or plugins
+    # host_application: "main-platform"
+
+    # Runtime environment
+    # runtime: "node:18-alpine"  # or "python:3.11", "lambda-nodejs18.x", etc.
+
+    # Location within repository (for monorepos)
+    # location: "agents/customer-service"
+
+# Example configurations for different scenarios:
+
+# === MONOREPO EXAMPLE ===
+# version: "1.0"
+# agent:
+#   paths:
+#     include:
+#       - "agents/customer-service/**"
+#       - "packages/shared-ai/**"
+#       - "packages/prompts/**"
+#     exclude:
+#       - "**/test/**"
+#       - "**/node_modules/**"
+#   dependencies:
+#     internal:
+#       - "packages/shared-ai"
+#       - "packages/auth"
+#   deployment:
+#     type: "monorepo"
+#     location: "agents/customer-service"
+
+# === SERVERLESS EXAMPLE ===
+# version: "1.0"
+# agent:
+#   paths:
+#     include:
+#       - "src/**"
+#       - "handler.js"
+#       - "serverless.yml"
+#     exclude:
+#       - "**/*.test.js"
+#       - "**/.serverless/**"
+#   deployment:
+#     type: "serverless"
+#     runtime: "nodejs18.x"
+
+# === PLUGIN EXAMPLE ===
+# version: "1.0"
+# agent:
+#   paths:
+#     include:
+#       - "src/extension/**"
+#       - "manifest.json"
+#       - "assets/**"
+#     exclude:
+#       - "**/test/**"
+#       - "**/debug/**"
+#   deployment:
+#     type: "plugin"
+#     host_application: "vscode"
