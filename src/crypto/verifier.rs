@@ -1,13 +1,14 @@
 use std::{collections::HashSet, fs, path::Path};
 
 use anyhow::{Context, Result};
-use jsonwebtoken::{decode, decode_header, DecodingKey, Validation};
+use jsonwebtoken::{decode, decode_header, DecodingKey, Header as JwtHeader, Validation};
 use serde_json::Value;
 
 use super::SignatureAlg;
 
 pub struct VerifiedToken {
     pub payload: Value,
+    pub header: JwtHeader,
     pub alg: SignatureAlg,
 }
 
@@ -23,15 +24,18 @@ pub fn verify_jws(token: &str, public_key_path: &Path) -> Result<VerifiedToken> 
     let decoding_key = decoding_key_from_pem(key_pem.as_bytes(), alg)?;
 
     let mut validation = Validation::new(alg.as_jwt_alg());
-    validation.validate_exp = false;
-    validation.validate_nbf = false;
-    validation.required_spec_claims = HashSet::new();
+    validation.leeway = 300; // 5 minute skew tolerance
+    validation.validate_exp = true;
+    validation.validate_nbf = true;
+    validation.validate_aud = false;
+    validation.required_spec_claims = HashSet::new(); // Claims validated downstream
 
     let verified = decode::<Value>(token, &decoding_key, &validation)
         .with_context(|| format!("signature verification failed for alg {}", alg))?;
 
     Ok(VerifiedToken {
         payload: verified.claims,
+        header: verified.header,
         alg,
     })
 }

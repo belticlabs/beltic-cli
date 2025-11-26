@@ -9,8 +9,6 @@ pub mod verifier;
 pub use signer::sign_jws;
 pub use verifier::{verify_jws, VerifiedToken};
 
-pub const BELTIC_JWT_TYP: &str = "application/beltic-agent+jwt";
-
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]
 pub enum SignatureAlg {
     Es256,

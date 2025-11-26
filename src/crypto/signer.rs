@@ -7,13 +7,15 @@ use pkcs8::EncodePrivateKey;
 use serde_json::Value;
 use zeroize::Zeroizing;
 
-use super::{SignatureAlg, BELTIC_JWT_TYP};
+use super::SignatureAlg;
 
 pub fn sign_jws(
     payload: &Value,
     key_path: &Path,
     alg: SignatureAlg,
     kid: Option<String>,
+    typ: &str,
+    content_type: Option<&str>,
 ) -> Result<String> {
     let pem = Zeroizing::new(
         fs::read_to_string(key_path)
@@ -22,7 +24,8 @@ pub fn sign_jws(
     let encoding_key = encoding_key_from_pem(pem.as_bytes(), alg)?;
 
     let mut header = Header::new(alg.as_jwt_alg());
-    header.typ = Some(BELTIC_JWT_TYP.to_string());
+    header.typ = Some(typ.to_string());
+    header.cty = content_type.map(|v| v.to_string());
     header.kid = kid;
 
     encode(&header, payload, &encoding_key).context("failed to encode JWS")

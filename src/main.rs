@@ -1,7 +1,7 @@
 use anyhow::Result;
 use beltic::commands::{
-    self, fingerprint::FingerprintArgs, init::InitArgs, keygen::KeygenArgs, sign::SignArgs,
-    verify::VerifyArgs,
+    self, directory::DirectoryArgs, fingerprint::FingerprintArgs, http_sign::HttpSignArgs,
+    init::InitArgs, keygen::KeygenArgs, sign::SignArgs, verify::VerifyArgs,
 };
 use clap::{Parser, Subcommand};
 
@@ -28,6 +28,10 @@ enum Command {
     Sign(SignArgs),
     /// Verify a JWS token and print its payload
     Verify(VerifyArgs),
+    /// Sign an HTTP request (Web Bot Auth)
+    HttpSign(HttpSignArgs),
+    /// Manage HTTP Message Signatures key directories
+    Directory(DirectoryArgs),
 }
 
 fn main() -> Result<()> {
@@ -39,6 +43,8 @@ fn main() -> Result<()> {
         Command::Keygen(args) => commands::keygen::run(args)?,
         Command::Sign(args) => commands::sign::run(args)?,
         Command::Verify(args) => commands::verify::run(args)?,
+        Command::HttpSign(args) => commands::http_sign::run(args)?,
+        Command::Directory(args) => commands::directory::run(args)?,
     };
 
     Ok(())

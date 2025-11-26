@@ -11,8 +11,8 @@ Beltic CLI enables developers to create verifiable credentials for AI agents wit
 - **Agent Manifest Management** - Create agent manifests with metadata including name, version, tools, and deployment configuration
 - **Deterministic Fingerprinting** - Generate SHA256 fingerprints of your codebase with configurable include/exclude patterns
 - **Cryptographic Key Generation** - Support for Ed25519 (EdDSA) and P-256 (ES256) algorithms
-- **JWS Token Signing** - Sign credentials as JSON Web Signatures with custom type header
-- **Signature Verification** - Verify JWS tokens and extract validated payloads
+- **JWS Token Signing** - Schema-aware signing for Agent/Developer Credential v1 with `vc` claim, `kid` header, and Beltic media types
+- **Signature Verification** - Verify signatures plus issuer/audience/time claims and validate payloads against the official JSON Schemas
 - **Flexible Configuration** - YAML-based configuration supporting multiple deployment types (standalone, monorepo, embedded, plugin, serverless)
 - **Interactive Setup** - User-friendly initialization with optional non-interactive mode for automation
 
@@ -155,31 +155,41 @@ beltic keygen --alg ES256 --out private-key.pem --pub public-key.pem
 
 ### `sign` - Sign Credential
 
-Sign a JSON payload as a JWS token.
+Sign a Beltic credential as a JWT with Beltic media types and a `vc` claim (iss/sub/jti/nbf/exp derived from the payload).
 
 ```bash
-# Sign with Ed25519 key
-beltic sign --key private-key.pem --alg EdDSA --payload credential.json --out credential.jwt
+# Sign an agent credential (subject DID required for agents)
+beltic sign --key private-key.pem --alg EdDSA \
+  --payload agent-credential.json \
+  --subject did:web:agent.example.com \
+  --kid did:web:beltic.test#agent-key-1 \
+  --out credential.jwt
 
-# Sign with P-256 key
-beltic sign --key private-key.pem --alg ES256 --payload credential.json --out signed.jwt
-
-# Include key identifier in header
-beltic sign --key private-key.pem --payload credential.json --out signed.jwt --kid agent-key-1
+# Sign a developer credential (uses subjectDid from payload)
+beltic sign --key private-key.pem --alg ES256 \
+  --payload developer-credential.json \
+  --kid did:web:beltic.test#dev-key-1 \
+  --audience did:web:verifier.example \
+  --out developer.jwt
 ```
 
 **Options:**
 - `-k, --key <PATH>` - Path to private key (PEM format)
 - `-a, --alg <ALGORITHM>` - Signature algorithm: `EdDSA` or `ES256`
-- `-p, --payload <PATH>` - Path to JSON payload file
-- `-o, --out <PATH>` - Output path for JWS token
-- `--kid <ID>` - Key identifier to include in JWS header
+- `-p, --payload <PATH>` - Path to JSON payload file (AgentCredential or DeveloperCredential)
+- `-o, --out <PATH>` - Output path for JWT
+- `--kid <ID>` - Key identifier to include in JWS header (required by spec)
+- `--issuer <DID>` - Override issuer DID for `iss` (defaults to `issuerDid` in payload)
+- `--subject <DID>` - Subject DID for `sub` (required for agents if payload lacks `subjectDid`)
+- `--audience <AUDIENCE>` - Audience claim (repeat to add multiple)
+- `--credential-type <TYPE>` - Force type detection (`agent` or `developer`)
+- `--skip-schema` - Skip JSON Schema validation before signing
 
-**Output:** A JWS token with the custom type header `application/beltic-agent+jwt`.
+**Output:** A compact JWT with `typ` set to `application/beltic-agent+jwt` or `application/beltic-developer+jwt` and `cty` set to `application/json`.
 
 ### `verify` - Verify Signature
 
-Verify a JWS token and display its payload.
+Verify a Beltic credential token (Agent/Developer) including signature, issuer/audience claims, and JSON Schema validation.
 
 ```bash
 # Verify token from file
@@ -191,10 +201,14 @@ beltic verify --key public-key.pem --token "eyJhbGc..."
 
 **Options:**
 - `-k, --key <PATH>` - Path to public key (PEM format)
-- `-t, --token <PATH|STRING>` - Path to JWS token file or token string
+- `-t, --token <PATH|STRING>` - Path to JWT file or token string
+- `--issuer <DID>` - Expected issuer DID (`iss`)
+- `--audience <AUDIENCE>` - Expected audience value(s)
+- `--credential-type <TYPE>` - Expected credential type (`agent` or `developer`)
+- `--skip-schema` - Skip JSON Schema validation of the `vc` claim
 
 **Output:**
-- On success: "VALID" followed by pretty-printed JSON payload
+- On success: "VALID" with credential type/alg/kid/iss/sub/jti plus the pretty-printed `vc` payload
 - On failure: "INVALID" with error details
 
 ## Configuration
@@ -501,5 +515,3 @@ MIT
 ## Contributing
 
 Contributions are welcome! Please feel free to submit issues or pull requests.
-
-

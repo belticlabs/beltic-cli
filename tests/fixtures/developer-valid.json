@@ -1,0 +1,47 @@
+{
+  "$schema": "../../../schemas/developer/v1/developer-credential-v1.schema.json",
+  "schemaVersion": "1.0",
+  "assuranceMetadata": {
+    "globalAssuranceLevel": "self_attested",
+    "fieldAssurances": {
+      "legalName": {
+        "assuranceLevel": "self_attested"
+      },
+      "website": {
+        "assuranceLevel": "self_attested"
+      }
+    }
+  },
+  "legalName": "Alice Developer",
+  "entityType": "individual",
+  "incorporationJurisdiction": {
+    "country": "US"
+  },
+  "businessRegistrationStatus": "not_applicable",
+  "website": "https://alicedev.example",
+  "businessEmail": "alice@alicedev.example",
+  "taxIdExists": false,
+  "kybTier": "tier_0_unverified",
+  "sanctionsScreeningStatus": "not_screened",
+  "overallRiskRating": "not_assessed",
+  "credentialId": "750e8400-e29b-41d4-a716-446655441001",
+  "issuanceDate": "2025-11-21T12:00:00Z",
+  "expirationDate": "2026-02-21T12:00:00Z",
+  "issuerDid": "did:web:beltic.com",
+  "verificationMethod": "did:web:beltic.com#key-1",
+  "credentialStatus": "active",
+  "revocationListUrl": "https://beltic.com/status/dev-credentials.json",
+  "lastUpdatedDate": "2025-11-21T12:00:00Z",
+  "subjectDid": "did:web:alicedev.example",
+  "publicKey": {
+    "type": "Ed25519VerificationKey2020",
+    "publicKeyMultibase": "z6MkhaXgBZDvotDkL5257faiztiGiC2QtKLGpbnnEGta2doK"
+  },
+  "proof": {
+    "type": "Ed25519Signature2020",
+    "created": "2025-11-21T12:00:00Z",
+    "verificationMethod": "did:web:beltic.com#key-1",
+    "proofPurpose": "assertionMethod",
+    "proofValue": "z5validIndividual1AbCdEfGhIjKlMnOpQrStUv"
+  }
+}
