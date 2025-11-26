@@ -10,11 +10,14 @@ Beltic CLI enables developers to create verifiable credentials for AI agents wit
 
 - **Agent Manifest Management** - Create agent manifests with metadata including name, version, tools, and deployment configuration
 - **Deterministic Fingerprinting** - Generate SHA256 fingerprints of your codebase with configurable include/exclude patterns
-- **Cryptographic Key Generation** - Support for Ed25519 (EdDSA) and P-256 (ES256) algorithms
+- **Cryptographic Key Generation** - Support for Ed25519 (EdDSA) and P-256 (ES256) algorithms with smart defaults
 - **JWS Token Signing** - Schema-aware signing for Agent/Developer Credential v1 with `vc` claim, `kid` header, and Beltic media types
 - **Signature Verification** - Verify signatures plus issuer/audience/time claims and validate payloads against the official JSON Schemas
+- **HTTP Message Signatures** - Sign HTTP requests per RFC 9421 for Web Bot Auth compatibility
+- **Key Directory Management** - Generate and serve key directories for HTTP Message Signatures
 - **Flexible Configuration** - YAML-based configuration supporting multiple deployment types (standalone, monorepo, embedded, plugin, serverless)
-- **Interactive Setup** - User-friendly initialization with optional non-interactive mode for automation
+- **Interactive Mode** - Developer-friendly prompts with auto-discovery of keys and credentials
+- **Smart Defaults** - Keys automatically stored in `.beltic/` with private keys gitignored
 
 ## Installation
 
@@ -53,14 +56,24 @@ beltic init
 # 2. Generate code fingerprint
 beltic fingerprint
 
-# 3. Generate cryptographic keypair
-beltic keygen --alg EdDSA --out private-key.pem --pub public-key.pem
+# 3. Generate cryptographic keypair (interactive - keys saved to .beltic/)
+beltic keygen
 
-# 4. Sign the manifest
-beltic sign --key private-key.pem --payload agent-manifest.json --out credential.jwt
+# 4. Sign the credential (interactive - auto-discovers keys and payloads)
+beltic sign
 
-# 5. Verify the signature
-beltic verify --key public-key.pem --token credential.jwt
+# 5. Verify the signature (interactive - auto-discovers keys and tokens)
+beltic verify
+```
+
+The CLI uses smart defaults and interactive mode by default. Keys are automatically saved to `.beltic/` with timestamp-based names (e.g., `eddsa-2024-11-26-private.pem`), and private keys are automatically added to `.gitignore`.
+
+For CI/CD or scripting, use `--non-interactive` mode with explicit paths:
+
+```bash
+beltic keygen --alg EdDSA --out private.pem --pub public.pem --non-interactive
+beltic sign --key private.pem --payload credential.json --kid my-key --non-interactive
+beltic verify --key public.pem --token credential.jwt --non-interactive
 ```
 
 ## Commands Reference
@@ -136,80 +149,212 @@ beltic fingerprint --verify
 
 ### `keygen` - Generate Cryptographic Keypair
 
-Generate a new Ed25519 or P-256 keypair for signing credentials.
+Generate a new Ed25519 or P-256 keypair for signing credentials. In interactive mode (default), prompts for algorithm and key name, with keys saved to `.beltic/`.
 
 ```bash
-# Generate Ed25519 keypair (recommended)
-beltic keygen --alg EdDSA --out private-key.pem --pub public-key.pem
+# Interactive mode (recommended for development)
+beltic keygen
+# → Prompts for algorithm (default: EdDSA) and key name
+# → Saves to .beltic/{name}-private.pem and .beltic/{name}-public.pem
+# → Automatically adds private keys to .gitignore
 
-# Generate P-256 keypair
-beltic keygen --alg ES256 --out private-key.pem --pub public-key.pem
+# Generate with custom name
+beltic keygen --name my-agent-key
+
+# Generate with explicit paths
+beltic keygen --alg EdDSA --out private.pem --pub public.pem
+
+# Non-interactive mode (for CI/CD)
+beltic keygen --alg ES256 --non-interactive
+# → Uses defaults: .beltic/es256-{date}-private.pem
 ```
 
 **Options:**
-- `-a, --alg <ALGORITHM>` - Signature algorithm: `EdDSA` (Ed25519) or `ES256` (P-256)
-- `-o, --out <PATH>` - Output path for private key (PEM format)
-- `-p, --pub <PATH>` - Output path for public key (PEM format)
+- `--alg <ALGORITHM>` - Signature algorithm: `EdDSA` (Ed25519, default) or `ES256` (P-256)
+- `--out <PATH>` - Output path for private key (default: `.beltic/{name}-private.pem`)
+- `--pub <PATH>` - Output path for public key (default: `.beltic/{name}-public.pem`)
+- `--name <NAME>` - Custom name for keypair (default: `{alg}-{YYYY-MM-DD}`)
+- `--non-interactive` - Disable prompts and use defaults
 
-**Note:** Keys are generated in PKCS#8 PEM format and securely cleared from memory after writing.
+**Security:**
+- Private keys are written with restricted permissions (`0600` on Unix)
+- Keys are generated in PKCS#8 PEM format and securely cleared from memory
+- Private keys are automatically added to `.gitignore`
 
 ### `sign` - Sign Credential
 
-Sign a Beltic credential as a JWT with Beltic media types and a `vc` claim (iss/sub/jti/nbf/exp derived from the payload).
+Sign a Beltic credential as a JWT with Beltic media types and a `vc` claim (iss/sub/jti/nbf/exp derived from the payload). In interactive mode (default), auto-discovers keys and credential files.
 
 ```bash
-# Sign an agent credential (subject DID required for agents)
-beltic sign --key private-key.pem --alg EdDSA \
+# Interactive mode (recommended)
+beltic sign
+# → Auto-discovers private keys in .beltic/, ./keys/, ./
+# → Auto-discovers credential JSON files
+# → Prompts for key, payload, kid, and output path
+
+# Sign with explicit options
+beltic sign --key .beltic/eddsa-2024-11-26-private.pem \
   --payload agent-credential.json \
-  --subject did:web:agent.example.com \
-  --kid did:web:beltic.test#agent-key-1 \
+  --kid my-agent-key \
   --out credential.jwt
 
-# Sign a developer credential (uses subjectDid from payload)
-beltic sign --key private-key.pem --alg ES256 \
-  --payload developer-credential.json \
-  --kid did:web:beltic.test#dev-key-1 \
-  --audience did:web:verifier.example \
-  --out developer.jwt
+# Sign an agent credential (subject DID required for agents)
+beltic sign --key private.pem \
+  --payload agent-credential.json \
+  --subject did:web:agent.example.com \
+  --kid agent-key-1 \
+  --out credential.jwt
+
+# Non-interactive mode (for CI/CD)
+beltic sign --key private.pem --payload credential.json --kid my-key --non-interactive
 ```
 
 **Options:**
-- `-k, --key <PATH>` - Path to private key (PEM format)
-- `-a, --alg <ALGORITHM>` - Signature algorithm: `EdDSA` or `ES256`
-- `-p, --payload <PATH>` - Path to JSON payload file (AgentCredential or DeveloperCredential)
-- `-o, --out <PATH>` - Output path for JWT
-- `--kid <ID>` - Key identifier to include in JWS header (required by spec)
+- `--key <PATH>` - Path to private key (PEM). Auto-discovered if omitted in interactive mode.
+- `--alg <ALGORITHM>` - Signature algorithm: `EdDSA` (default) or `ES256`
+- `--payload <PATH>` - Path to JSON credential file. Auto-discovered if omitted.
+- `--out <PATH>` - Output path for JWT (default: `{payload}.jwt`)
+- `--kid <ID>` - Key identifier for JWS header. Prompted if omitted in interactive mode.
 - `--issuer <DID>` - Override issuer DID for `iss` (defaults to `issuerDid` in payload)
 - `--subject <DID>` - Subject DID for `sub` (required for agents if payload lacks `subjectDid`)
 - `--audience <AUDIENCE>` - Audience claim (repeat to add multiple)
 - `--credential-type <TYPE>` - Force type detection (`agent` or `developer`)
 - `--skip-schema` - Skip JSON Schema validation before signing
+- `--non-interactive` - Disable prompts (requires --key, --payload, --kid)
 
 **Output:** A compact JWT with `typ` set to `application/beltic-agent+jwt` or `application/beltic-developer+jwt` and `cty` set to `application/json`.
 
 ### `verify` - Verify Signature
 
-Verify a Beltic credential token (Agent/Developer) including signature, issuer/audience claims, and JSON Schema validation.
+Verify a Beltic credential token (Agent/Developer) including signature, issuer/audience claims, and JSON Schema validation. In interactive mode (default), auto-discovers keys and token files.
 
 ```bash
-# Verify token from file
-beltic verify --key public-key.pem --token credential.jwt
+# Interactive mode (recommended)
+beltic verify
+# → Auto-discovers public keys in .beltic/, ./keys/, ./
+# → Auto-discovers token files (.jwt, .jws)
+# → Prompts for key and token selection
+
+# Verify with explicit paths
+beltic verify --key .beltic/eddsa-2024-11-26-public.pem --token credential.jwt
 
 # Verify token from string
-beltic verify --key public-key.pem --token "eyJhbGc..."
+beltic verify --key public.pem --token "eyJhbGc..."
+
+# Non-interactive mode (for CI/CD)
+beltic verify --key public.pem --token credential.jwt --non-interactive
 ```
 
 **Options:**
-- `-k, --key <PATH>` - Path to public key (PEM format)
-- `-t, --token <PATH|STRING>` - Path to JWT file or token string
+- `--key <PATH>` - Path to public key (PEM). Auto-discovered if omitted in interactive mode.
+- `--token <PATH|STRING>` - Path to JWT file or token string. Auto-discovered if omitted.
 - `--issuer <DID>` - Expected issuer DID (`iss`)
 - `--audience <AUDIENCE>` - Expected audience value(s)
 - `--credential-type <TYPE>` - Expected credential type (`agent` or `developer`)
 - `--skip-schema` - Skip JSON Schema validation of the `vc` claim
+- `--non-interactive` - Disable prompts (requires --key, --token)
 
 **Output:**
 - On success: "VALID" with credential type/alg/kid/iss/sub/jti plus the pretty-printed `vc` payload
 - On failure: "INVALID" with error details
+
+### `http-sign` - Sign HTTP Requests (Web Bot Auth)
+
+Sign HTTP requests per RFC 9421 for Web Bot Auth compatibility. This command generates the required `Signature-Agent`, `Signature-Input`, and `Signature` headers.
+
+```bash
+# Sign a GET request
+beltic http-sign \
+  --method GET \
+  --url https://api.example.com/data \
+  --key .beltic/eddsa-2024-11-26-private.pem \
+  --key-directory https://myagent.example.com/.well-known/http-message-signatures-directory
+
+# Sign a POST request with body
+beltic http-sign \
+  --method POST \
+  --url https://api.example.com/submit \
+  --key private.pem \
+  --key-directory https://myagent.example.com/.well-known/http-message-signatures-directory \
+  --body '{"data": "value"}'
+
+# Output as curl command
+beltic http-sign \
+  --method GET \
+  --url https://api.example.com/data \
+  --key private.pem \
+  --key-directory https://myagent.example.com/.well-known/http-message-signatures-directory \
+  --format curl
+
+# Include custom headers in signature
+beltic http-sign \
+  --method POST \
+  --url https://api.example.com/data \
+  --key private.pem \
+  --key-directory https://myagent.example.com/.well-known/http-message-signatures-directory \
+  --header "Content-Type: application/json" \
+  --body-file request.json
+```
+
+**Options:**
+- `--method <METHOD>` - HTTP method (GET, POST, etc.)
+- `--url <URL>` - Target URL
+- `--key <PATH>` - Path to Ed25519 private key (PEM)
+- `--key-directory <URL>` - URL to the agent's key directory (must be HTTPS)
+- `--header <HEADER>` - Additional headers to include (format: "Name: Value", repeatable)
+- `--component <COMPONENT>` - Signature components (default: @method, @authority, @path, signature-agent)
+- `--body <STRING>` - Request body string
+- `--body-file <PATH>` - Request body from file
+- `--expires-in <SECS>` - Signature validity in seconds (default: 60)
+- `--format <FORMAT>` - Output format: `headers` (default) or `curl`
+
+**Output:** Signature headers ready to use in HTTP requests. Also outputs the key ID (JWK thumbprint) and expiration time.
+
+### `directory` - Key Directory Management
+
+Generate and manage key directories for HTTP Message Signatures (Web Bot Auth).
+
+#### `directory generate` - Generate Key Directory
+
+```bash
+# Generate key directory from public keys
+beltic directory generate \
+  --public-key .beltic/eddsa-2024-11-26-public.pem \
+  --out .well-known/http-message-signatures-directory
+
+# Generate with multiple keys
+beltic directory generate \
+  --public-key key1-public.pem \
+  --public-key key2-public.pem \
+  --out directory.json
+
+# Generate with signed response headers
+beltic directory generate \
+  --public-key public.pem \
+  --out directory.json \
+  --sign \
+  --private-key private.pem \
+  --authority myagent.example.com
+```
+
+**Options:**
+- `--public-key <PATH>` - Path to Ed25519 public key (PEM, repeatable)
+- `--out <PATH>` - Output path for key directory JSON
+- `--sign` - Also output signature headers for the response
+- `--private-key <PATH>` - Private key for signing (required with --sign)
+- `--authority <HOST>` - Authority (host) for signature (required with --sign)
+
+#### `directory thumbprint` - Compute JWK Thumbprint
+
+```bash
+# Get the JWK thumbprint for a public key
+beltic directory thumbprint --public-key public.pem
+```
+
+**Options:**
+- `--public-key <PATH>` - Path to Ed25519 public key (PEM)
+
+**Output:** The JWK thumbprint (RFC 7638) used as the key identifier in HTTP Message Signatures.
 
 ## Configuration
 
@@ -388,6 +533,70 @@ cd test-agent
 
 See `test-agent/README.md` for more details about the customer support agent implementation.
 
+### Web Bot Auth Workflow
+
+Web Bot Auth uses HTTP Message Signatures (RFC 9421) to authenticate AI agents making HTTP requests. Here's a complete workflow:
+
+```bash
+# 1. Generate an Ed25519 keypair for your agent
+beltic keygen --name my-agent
+
+# 2. Generate the key directory JSON
+beltic directory generate \
+  --public-key .beltic/my-agent-public.pem \
+  --out .well-known/http-message-signatures-directory
+
+# 3. Get the JWK thumbprint (this is your keyid)
+beltic directory thumbprint --public-key .beltic/my-agent-public.pem
+# Output: S9Zz0...  (use this as keyid)
+
+# 4. Host the key directory at your agent's domain
+# The directory should be served at:
+#   https://myagent.example.com/.well-known/http-message-signatures-directory
+# with Content-Type: application/http-message-signatures-directory+json
+
+# 5. Sign HTTP requests to protected APIs
+beltic http-sign \
+  --method GET \
+  --url https://api.example.com/protected/resource \
+  --key .beltic/my-agent-private.pem \
+  --key-directory https://myagent.example.com/.well-known/http-message-signatures-directory
+
+# Output:
+# Signature-Agent: "https://myagent.example.com/.well-known/http-message-signatures-directory"
+# Signature-Input: sig1=("@method" "@authority" "@path" "signature-agent");alg="ed25519";keyid="S9Zz0...";created=...;expires=...;nonce="...";tag="web-bot-auth"
+# Signature: sig1=:...:
+
+# 6. Or output as a curl command for testing
+beltic http-sign \
+  --method POST \
+  --url https://api.example.com/submit \
+  --key .beltic/my-agent-private.pem \
+  --key-directory https://myagent.example.com/.well-known/http-message-signatures-directory \
+  --body '{"query": "Hello, API!"}' \
+  --format curl
+```
+
+**Key Directory Format:**
+```json
+{
+  "keys": [
+    {
+      "kty": "OKP",
+      "crv": "Ed25519",
+      "x": "base64url-encoded-public-key"
+    }
+  ]
+}
+```
+
+**How it works:**
+1. Your agent hosts a key directory at a well-known URL
+2. The `Signature-Agent` header points to this directory
+3. The server fetches the directory, finds the key matching `keyid`
+4. The server verifies the signature using the public key
+5. If valid, the request is authenticated as coming from your agent
+
 ## Development
 
 ### Project Structure
@@ -397,17 +606,22 @@ beltic-cli/
 ├── src/
 │   ├── main.rs              # CLI entry point
 │   ├── lib.rs               # Library exports
+│   ├── credential.rs        # Credential building and validation
 │   ├── commands/            # Command implementations
 │   │   ├── init.rs          # Initialize manifest
 │   │   ├── fingerprint.rs   # Generate fingerprint
-│   │   ├── keygen.rs        # Generate keys
-│   │   ├── sign.rs          # Sign credentials
-│   │   └── verify.rs        # Verify signatures
+│   │   ├── keygen.rs        # Generate keys (interactive mode)
+│   │   ├── sign.rs          # Sign credentials (interactive mode)
+│   │   ├── verify.rs        # Verify signatures (interactive mode)
+│   │   ├── http_sign.rs     # HTTP request signing (Web Bot Auth)
+│   │   ├── directory.rs     # Key directory management
+│   │   ├── prompts.rs       # Shared interactive prompts
+│   │   └── discovery.rs     # Key/token auto-discovery
 │   ├── manifest/            # Manifest handling
 │   │   ├── config.rs        # Configuration parsing
 │   │   ├── detector.rs      # Auto-detection logic
 │   │   ├── fingerprint.rs   # Fingerprint generation
-│   │   ├── prompts.rs       # Interactive prompts
+│   │   ├── prompts.rs       # Interactive prompts for manifest
 │   │   ├── schema.rs        # JSON schemas
 │   │   ├── templates.rs     # Configuration templates
 │   │   └── validator.rs     # Schema validation
@@ -415,9 +629,9 @@ beltic-cli/
 │       ├── mod.rs           # Crypto utilities
 │       ├── signer.rs        # JWS signing
 │       └── verifier.rs      # JWS verification
+├── schemas/                 # JSON schemas for credentials
 ├── tests/                   # Integration tests
 │   └── jws_vectors.rs       # JWS test vectors
-├── test-agent/              # Example TypeScript agent
 ├── Cargo.toml               # Project manifest
 └── README.md                # This file
 ```
@@ -469,9 +683,10 @@ cargo test --no-run
 
 ### Key Management
 
-- Private keys are stored in PKCS#8 PEM format
+- Private keys are stored in PKCS#8 PEM format with restricted permissions (`0600` on Unix)
 - Keys are securely cleared from memory using the `zeroize` crate
 - Uses cryptographically secure random number generation (`OsRng`)
+- Private keys are automatically added to `.gitignore` when stored in `.beltic/`
 - No hardcoded keys or secrets in the codebase
 
 ### Signature Algorithms

@@ -6,9 +6,13 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Beltic CLI is a Rust-based command-line tool for managing AI agent credentials and manifests. It provides functionality for:
 - Creating agent manifests with fingerprinting
-- Generating cryptographic keypairs (ES256/EdDSA)
+- Generating cryptographic keypairs (ES256/EdDSA) with smart defaults
 - Signing agent credentials as JWS tokens
 - Verifying JWS signatures
+- Signing HTTP requests per RFC 9421 (Web Bot Auth)
+- Managing key directories for HTTP Message Signatures
+
+The CLI features interactive mode with auto-discovery of keys and credentials, making it developer-friendly for local development while supporting non-interactive mode for CI/CD.
 
 ## Build and Development Commands
 
@@ -50,7 +54,7 @@ cargo run -- <command>
 
 ## CLI Commands
 
-The Beltic CLI provides five main commands:
+The Beltic CLI provides seven commands:
 
 1. **init** - Initialize a new agent manifest with interactive prompts
    ```bash
@@ -62,19 +66,30 @@ The Beltic CLI provides five main commands:
    beltic fingerprint [--manifest path] [--config path]
    ```
 
-3. **keygen** - Generate a new cryptographic keypair
+3. **keygen** - Generate a new cryptographic keypair (interactive mode with auto-naming)
    ```bash
-   beltic keygen --algorithm <ES256|EdDSA> --output <path>
+   beltic keygen [--alg EdDSA|ES256] [--name name] [--out path] [--pub path] [--non-interactive]
    ```
 
-4. **sign** - Sign a JSON payload into a JWS token
+4. **sign** - Sign a JSON payload into a JWS token (interactive mode with auto-discovery)
    ```bash
-   beltic sign --payload <path> --key <path> --algorithm <ES256|EdDSA>
+   beltic sign [--key path] [--payload path] [--kid id] [--out path] [--non-interactive]
    ```
 
-5. **verify** - Verify a JWS token and print its payload
+5. **verify** - Verify a JWS token and print its payload (interactive mode with auto-discovery)
    ```bash
-   beltic verify --token <path-or-string> --key <path>
+   beltic verify [--key path] [--token path-or-string] [--non-interactive]
+   ```
+
+6. **http-sign** - Sign HTTP requests per RFC 9421 for Web Bot Auth
+   ```bash
+   beltic http-sign --method GET|POST|... --url <url> --key <path> --key-directory <url>
+   ```
+
+7. **directory** - Manage key directories for HTTP Message Signatures
+   ```bash
+   beltic directory generate --public-key <path> --out <path>
+   beltic directory thumbprint --public-key <path>
    ```
 
 ## Code Architecture
@@ -85,12 +100,17 @@ The Beltic CLI provides five main commands:
 src/
 ├── main.rs           # CLI entry point with clap command definitions
 ├── lib.rs            # Library exports (commands, crypto, manifest modules)
+├── credential.rs     # Credential building, detection, and validation
 ├── commands/         # CLI command implementations
 │   ├── init.rs       # Agent manifest initialization
 │   ├── fingerprint.rs # Fingerprint generation
-│   ├── keygen.rs     # Keypair generation
-│   ├── sign.rs       # JWS signing
-│   └── verify.rs     # JWS verification
+│   ├── keygen.rs     # Keypair generation (interactive mode)
+│   ├── sign.rs       # JWS signing (interactive mode)
+│   ├── verify.rs     # JWS verification (interactive mode)
+│   ├── http_sign.rs  # HTTP request signing (Web Bot Auth, RFC 9421)
+│   ├── directory.rs  # Key directory management
+│   ├── prompts.rs    # Shared interactive prompts for CLI commands
+│   └── discovery.rs  # Key/token auto-discovery and gitignore management
 ├── crypto/           # Cryptographic operations
 │   ├── mod.rs        # SignatureAlg enum and constants
 │   ├── signer.rs     # JWS signing with ES256/EdDSA
