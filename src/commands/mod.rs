@@ -1,7 +1,9 @@
 pub mod directory;
+pub mod discovery;
 pub mod fingerprint;
 pub mod http_sign;
 pub mod init;
 pub mod keygen;
+pub mod prompts;
 pub mod sign;
 pub mod verify;

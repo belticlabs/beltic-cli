@@ -9,7 +9,6 @@ use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use clap::{Args, Subcommand};
 use ed25519_dalek::{Signer, SigningKey, VerifyingKey};
 use pkcs8::{DecodePrivateKey, DecodePublicKey};
-use rand_core::OsRng;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use zeroize::Zeroizing;
@@ -153,7 +152,7 @@ fn run_generate(args: GenerateArgs) -> Result<()> {
 
         // Generate nonce
         let mut nonce_bytes = [0u8; 32];
-        getrandom::fill(&mut nonce_bytes).context("failed to generate nonce")?;
+        getrandom::getrandom(&mut nonce_bytes).context("failed to generate nonce")?;
         let nonce = URL_SAFE_NO_PAD.encode(nonce_bytes);
 
         // Build signature params

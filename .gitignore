@@ -2,3 +2,4 @@
 .DS_Store
 **/*.rs.bk
 test-agent/
+.beltic/*-private.pem
