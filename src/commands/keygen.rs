@@ -1,4 +1,7 @@
-use std::{fs, path::PathBuf};
+use std::{fs, io::Write, path::PathBuf};
+
+#[cfg(unix)]
+use std::os::unix::fs::OpenOptionsExt;
 
 use anyhow::{Context, Result};
 use clap::Args;
@@ -101,8 +104,7 @@ fn run_interactive(args: KeygenArgs) -> Result<()> {
     // 6. Generate and write keys
     let (private_pem, public_pem) = generate_keypair(alg)?;
 
-    write_file(&private_path, private_pem.as_bytes())
-        .with_context(|| format!("failed to write private key to {}", private_path.display()))?;
+    write_private_key(&private_path, private_pem.as_bytes())?;
     write_file(&public_path, public_pem.as_bytes())
         .with_context(|| format!("failed to write public key to {}", public_path.display()))?;
 
@@ -167,8 +169,7 @@ fn run_non_interactive(args: KeygenArgs) -> Result<()> {
     // Generate and write keys
     let (private_pem, public_pem) = generate_keypair(alg)?;
 
-    write_file(&private_path, private_pem.as_bytes())
-        .with_context(|| format!("failed to write private key to {}", private_path.display()))?;
+    write_private_key(&private_path, private_pem.as_bytes())?;
     write_file(&public_path, public_pem.as_bytes())
         .with_context(|| format!("failed to write public key to {}", public_path.display()))?;
 
@@ -229,4 +230,35 @@ fn write_file(path: &PathBuf, contents: &[u8]) -> Result<()> {
     }
 
     fs::write(path, contents).map_err(Into::into)
+}
+
+/// Write private key with restricted permissions (0o600 on Unix)
+fn write_private_key(path: &PathBuf, contents: &[u8]) -> Result<()> {
+    if let Some(parent) = path.parent() {
+        if !parent.as_os_str().is_empty() {
+            fs::create_dir_all(parent)
+                .with_context(|| format!("failed to create directory {}", parent.display()))?;
+        }
+    }
+
+    #[cfg(unix)]
+    {
+        let mut file = fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .mode(0o600) // Owner read/write only
+            .open(path)
+            .with_context(|| format!("failed to create private key file {}", path.display()))?;
+        file.write_all(contents)
+            .with_context(|| format!("failed to write private key to {}", path.display()))?;
+        return Ok(());
+    }
+
+    #[cfg(not(unix))]
+    {
+        fs::write(path, contents)
+            .with_context(|| format!("failed to write private key to {}", path.display()))?;
+        Ok(())
+    }
 }
