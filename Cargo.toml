@@ -2,6 +2,14 @@
 name = "beltic"
 version = "0.1.0"
 edition = "2021"
+authors = ["belticlabs"]
+license = "MIT"
+description = "CLI for managing and signing verifiable credentials for AI agents"
+repository = "https://github.com/belticlabs/beltic-cli"
+homepage = "https://github.com/belticlabs/beltic-cli"
+readme = "README.md"
+keywords = ["beltic", "credentials", "ai-agents", "jwt", "jws"]
+categories = ["command-line-utilities", "cryptography", "authentication"]
 
 [dependencies]
 anyhow = "1.0.82"

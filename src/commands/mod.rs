@@ -1,3 +1,4 @@
+pub mod dev_init;
 pub mod directory;
 pub mod discovery;
 pub mod fingerprint;

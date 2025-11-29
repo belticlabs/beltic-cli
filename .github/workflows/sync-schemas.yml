@@ -1,0 +1,65 @@
+name: Sync Schemas
+
+on:
+  schedule:
+    # Run weekly on Mondays at 00:00 UTC
+    - cron: '0 0 * * 1'
+  workflow_dispatch:
+    # Allow manual trigger
+
+jobs:
+  sync:
+    name: Sync Schemas from beltic-spec
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download schemas
+        run: |
+          SCHEMA_BASE="https://raw.githubusercontent.com/belticlabs/beltic-spec/main/schemas"
+          
+          # Download agent schema
+          curl -sSL "${SCHEMA_BASE}/agent/v1/agent-credential-v1.schema.json" \
+            -o schemas/agent/v1/agent-credential-v1.schema.json
+          
+          # Download developer schema
+          curl -sSL "${SCHEMA_BASE}/developer/v1/developer-credential-v1.schema.json" \
+            -o schemas/developer/v1/developer-credential-v1.schema.json
+          
+          echo "Schemas downloaded from beltic-spec"
+
+      - name: Check for changes
+        id: changes
+        run: |
+          if git diff --quiet schemas/; then
+            echo "changed=false" >> $GITHUB_OUTPUT
+            echo "No schema changes detected"
+          else
+            echo "changed=true" >> $GITHUB_OUTPUT
+            echo "Schema changes detected:"
+            git diff --stat schemas/
+          fi
+
+      - name: Create Pull Request
+        if: steps.changes.outputs.changed == 'true'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: 'chore: sync schemas from beltic-spec'
+          title: 'chore: sync schemas from beltic-spec'
+          body: |
+            This PR syncs the JSON schemas from the [beltic-spec](https://github.com/belticlabs/beltic-spec) repository.
+            
+            Schema source: https://github.com/belticlabs/beltic-spec/tree/main/schemas
+            
+            Please review the changes and merge if they look correct.
+          branch: chore/sync-schemas
+          delete-branch: true
+          labels: |
+            schemas
+            automated
+

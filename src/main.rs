@@ -1,7 +1,7 @@
 use anyhow::Result;
 use beltic::commands::{
-    self, directory::DirectoryArgs, fingerprint::FingerprintArgs, http_sign::HttpSignArgs,
-    init::InitArgs, keygen::KeygenArgs, sign::SignArgs, verify::VerifyArgs,
+    self, dev_init::DevInitArgs, directory::DirectoryArgs, fingerprint::FingerprintArgs,
+    http_sign::HttpSignArgs, init::InitArgs, keygen::KeygenArgs, sign::SignArgs, verify::VerifyArgs,
 };
 use clap::{Parser, Subcommand};
 
@@ -20,6 +20,8 @@ struct Cli {
 enum Command {
     /// Initialize a new agent manifest
     Init(InitArgs),
+    /// Create a self-attested developer credential
+    DevInit(DevInitArgs),
     /// Update the code fingerprint in an existing manifest
     Fingerprint(FingerprintArgs),
     /// Generate a new keypair
@@ -39,6 +41,7 @@ fn main() -> Result<()> {
 
     match cli.command {
         Command::Init(args) => commands::init::run(args)?,
+        Command::DevInit(args) => commands::dev_init::run(args)?,
         Command::Fingerprint(args) => commands::fingerprint::run(args)?,
         Command::Keygen(args) => commands::keygen::run(args)?,
         Command::Sign(args) => commands::sign::run(args)?,
