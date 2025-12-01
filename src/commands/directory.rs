@@ -38,6 +38,10 @@ pub struct GenerateArgs {
     #[arg(long)]
     pub out: PathBuf,
 
+    /// URL to the agent's credential JWT (optional)
+    #[arg(long)]
+    pub credential_url: Option<String>,
+
     /// Also output with signature headers (requires private key)
     #[arg(long)]
     pub sign: bool,
@@ -59,8 +63,11 @@ pub struct ThumbprintArgs {
 }
 
 #[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct KeyDirectory {
     keys: Vec<JwkKey>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    agent_credential_url: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -105,7 +112,10 @@ fn run_generate(args: GenerateArgs) -> Result<()> {
         });
     }
 
-    let directory = KeyDirectory { keys };
+    let directory = KeyDirectory { 
+        keys,
+        agent_credential_url: args.credential_url.clone(),
+    };
     let directory_json = serde_json::to_string_pretty(&directory)?;
 
     // Write directory
@@ -124,6 +134,11 @@ fn run_generate(args: GenerateArgs) -> Result<()> {
     for (i, key) in directory.keys.iter().enumerate() {
         let thumbprint = compute_key_thumbprint(&key.x)?;
         println!("  Key {}: thumbprint = {}", i + 1, thumbprint);
+    }
+
+    // Output credential URL if provided
+    if let Some(ref cred_url) = args.credential_url {
+        println!("  Credential URL: {}", cred_url);
     }
 
     // Sign if requested
