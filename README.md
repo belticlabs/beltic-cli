@@ -21,27 +21,40 @@ Beltic CLI enables developers to create verifiable credentials for AI agents wit
 
 ## Installation
 
-### Prerequisites
+### Quick Install (Recommended)
 
-- Rust 1.70 or later (2021 edition)
+**Shell (macOS/Linux):**
+```bash
+curl -fsSL https://raw.githubusercontent.com/belticlabs/beltic-cli/master/install.sh | sh
+```
+
+**Homebrew (macOS/Linux):**
+```bash
+brew tap belticlabs/tap
+brew install beltic
+```
+
+**Cargo (Rust):**
+```bash
+cargo install beltic
+```
 
 ### Build from Source
+
+Requires Rust 1.70 or later (2021 edition).
 
 ```bash
 # Clone the repository
 git clone https://github.com/belticlabs/beltic-cli.git
-cd beltic/beltic-cli
+cd beltic-cli
 
 # Build release binary
 cargo build --release
 
 # The binary will be available at:
 ./target/release/beltic
-```
 
-### Install Locally
-
-```bash
+# Or install locally
 cargo install --path .
 ```
 
@@ -709,19 +722,59 @@ cargo test --no-run
 4. **Validate inputs** - The CLI validates all inputs against schemas and patterns
 5. **Audit fingerprints** - Regularly regenerate and compare fingerprints to detect unauthorized changes
 
+## Hosting Requirements
+
+For agents to participate in Web Bot Auth, they need to host certain files publicly. Here are the options:
+
+### Key Directory Hosting
+
+Your agent's key directory must be accessible at an HTTPS URL. Options:
+
+**GitHub Pages (free):**
+```bash
+# In your agent's repository
+mkdir -p .well-known
+beltic directory generate --public-key .beltic/my-agent-public.pem --out .well-known/http-message-signatures-directory
+
+# Enable GitHub Pages for the repo, then your directory is at:
+# https://<username>.github.io/<repo>/.well-known/http-message-signatures-directory
+```
+
+**Vercel/Netlify (free tier):**
+- Deploy a static site with the `.well-known/` directory
+- Works automatically with Next.js `public/` folder
+
+**Your own server:**
+- Serve the JSON file with `Content-Type: application/http-message-signatures-directory+json`
+
+### Agent Credential JWT Hosting (Optional)
+
+If you want other services to fetch your full credential (not just verify signatures), host the JWT:
+
+```bash
+# Add credential URL to your key directory
+beltic directory generate \
+  --public-key .beltic/my-agent-public.pem \
+  --credential-url https://example.com/agent-credential.jwt \
+  --out .well-known/http-message-signatures-directory
+```
+
+## Related Projects
+
+- **[@belticlabs/kya](https://github.com/belticlabs/beltic-sdk)** - TypeScript SDK for credential verification
+- **[beltic-spec](https://github.com/belticlabs/beltic-spec)** - JSON schemas for Agent/Developer credentials
+- **[airport](https://github.com/belticlabs/airport)** - Verification endpoint to test credentials
+
 ## Roadmap
 
 Beltic CLI is the foundation for a larger credential management ecosystem. Planned features include:
 
-- **TypeScript and Python SDKs** - Native language bindings for popular platforms
 - **W3C Verifiable Credentials** - Support for VC Data Model 1.1
 - **DID Resolution** - Integration with decentralized identity networks
 - **Credential Platform** - Centralized issuance and revocation service
 - **KMS/HSM Integration** - Hardware-backed key security
 - **Status List 2021** - Advanced credential revocation mechanisms
 - **Real-time Verification** - Webhook-based credential status updates
-
-See `sdk.md` for detailed SDK development plans.
 
 ## License
 
