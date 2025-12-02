@@ -63,19 +63,22 @@ cargo install --path .
 Here's a complete workflow to create and sign an agent credential:
 
 ```bash
-# 1. Initialize agent manifest (interactive)
+# 1. Create developer credential (optional, for agent manifests)
+beltic dev-init
+
+# 2. Initialize agent manifest (interactive)
 beltic init
 
-# 2. Generate code fingerprint
+# 3. Generate code fingerprint
 beltic fingerprint
 
-# 3. Generate cryptographic keypair (interactive - keys saved to .beltic/)
+# 4. Generate cryptographic keypair (interactive - keys saved to .beltic/)
 beltic keygen
 
-# 4. Sign the credential (interactive - auto-discovers keys and payloads)
+# 5. Sign the credential (interactive - auto-discovers keys and payloads)
 beltic sign
 
-# 5. Verify the signature (interactive - auto-discovers keys and tokens)
+# 6. Verify the signature (interactive - auto-discovers keys and tokens)
 beltic verify
 ```
 
@@ -131,6 +134,68 @@ beltic init --include "src/**" --exclude "**/*.test.*"
 - `-f, --force` - Overwrite existing manifest
 - `--non-interactive` - Disable interactive prompts
 - `--no-validate` - Skip validation of generated manifest
+
+### `dev-init` - Create Developer Credential
+
+Create a self-attested developer credential for use with agent credentials. This credential identifies you as the developer of AI agents.
+
+```bash
+# Interactive mode (default)
+beltic dev-init
+# → Prompts for legal name, entity type, country, website, email, public key (optional), and output path
+# → Creates developer-credential.json by default
+
+# With specific options
+beltic dev-init \
+  --name "Acme Corp" \
+  --entity-type corporation \
+  --country US \
+  --website https://acme.com \
+  --email dev@acme.com \
+  --output my-developer-credential.json
+
+# Include public key in credential
+beltic dev-init \
+  --name "John Doe" \
+  --entity-type individual \
+  --country US \
+  --website https://johndoe.dev \
+  --email john@johndoe.dev \
+  --public-key .beltic/eddsa-2024-11-26-public.pem
+
+# Non-interactive mode (for CI/CD)
+beltic dev-init \
+  --name "Acme Corp" \
+  --entity-type corporation \
+  --country US \
+  --website https://acme.com \
+  --email dev@acme.com \
+  --non-interactive
+```
+
+**Options:**
+- `-o, --output <PATH>` - Output path for developer credential (default: `./developer-credential.json`)
+- `--name <NAME>` - Legal name of the developer or organization
+- `--entity-type <TYPE>` - Entity type: `individual`, `corporation`, `limited_liability_company`, `sole_proprietorship`, `partnership`, `nonprofit`, or `government_agency`
+- `--country <CODE>` - Country code (ISO 3166-1 alpha-2, e.g., `US`, `GB`, `DE`)
+- `--website <URL>` - Website URL
+- `--email <EMAIL>` - Business email address
+- `--public-key <PATH>` - Path to public key (PEM) to embed in credential (optional)
+- `-f, --force` - Overwrite existing credential file
+- `--non-interactive` - Disable interactive prompts (requires `--name`, `--email`, `--website`)
+
+**Output:** A developer credential JSON file with:
+- Credential ID (UUID)
+- Legal name, entity type, and incorporation jurisdiction
+- Website and business email
+- Public key (if provided)
+- Issuance and expiration dates (90-day validity for self-attested)
+- Self-attested assurance metadata
+
+**Next Steps:**
+1. Generate a keypair if you haven't: `beltic keygen`
+2. Sign the credential: `beltic sign --payload developer-credential.json`
+3. Use the credential ID in agent manifests: `beltic init --developer-id <credential-id>`
 
 ### `fingerprint` - Generate Code Fingerprint
 
