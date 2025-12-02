@@ -6,7 +6,7 @@ use crate::manifest::{init_manifest, InitOptions};
 
 #[derive(Parser, Debug)]
 pub struct InitArgs {
-    /// Output path for the manifest (default: ./agent-manifest.json)
+    /// Output path for the manifest (default: ./agent-manifest.json or ./agent-credential.json)
     #[arg(short, long)]
     output: Option<String>,
 
@@ -41,6 +41,15 @@ pub struct InitArgs {
     /// Skip validation of generated manifest
     #[arg(long = "no-validate")]
     no_validate: bool,
+
+    /// Generate schema-compliant AgentCredential instead of AgentManifest
+    /// Use this to create a credential ready for signing
+    #[arg(long)]
+    credential: bool,
+
+    /// Issuer DID for self-signed credentials (auto-generated if not provided)
+    #[arg(long)]
+    issuer_did: Option<String>,
 }
 
 pub fn run(args: InitArgs) -> Result<()> {
@@ -84,6 +93,8 @@ pub fn run(args: InitArgs) -> Result<()> {
         force: args.force,
         interactive: !args.non_interactive,  // Interactive by default
         validate: !args.no_validate,         // Validate by default
+        credential: args.credential,         // Schema-compliant credential output
+        issuer_did: args.issuer_did,
     };
 
     init_manifest(&options)

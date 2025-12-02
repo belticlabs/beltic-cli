@@ -132,16 +132,43 @@ fn run_interactive(mut args: SignArgs) -> Result<()> {
 }
 
 fn run_non_interactive(args: SignArgs) -> Result<()> {
-    // Validate required args
-    let key = args.key.as_ref().ok_or_else(|| {
-        anyhow!("--key is required in non-interactive mode (or run without --non-interactive)")
-    })?;
-    let payload = args.payload.as_ref().ok_or_else(|| {
-        anyhow!("--payload is required in non-interactive mode")
-    })?;
-    let kid = args.kid.as_ref().ok_or_else(|| {
-        anyhow!("--kid is required in non-interactive mode")
-    })?;
+    // Auto-discover key if not provided
+    let key = if let Some(k) = args.key.as_ref() {
+        k.clone()
+    } else {
+        let keys = find_private_keys();
+        if keys.is_empty() {
+            bail!("No private keys found. Generate one with: beltic keygen");
+        }
+        eprintln!("[info] Using auto-discovered key: {}", keys[0].display());
+        keys[0].clone()
+    };
+
+    // Auto-discover payload if not provided
+    let payload = if let Some(p) = args.payload.as_ref() {
+        p.clone()
+    } else {
+        let credentials = find_credentials();
+        if credentials.is_empty() {
+            bail!("No credential files found. Create one with: beltic init --credential");
+        }
+        eprintln!("[info] Using auto-discovered payload: {}", credentials[0].display());
+        credentials[0].clone()
+    };
+
+    // Auto-derive kid from key filename if not provided
+    let kid = if let Some(k) = args.kid.as_ref() {
+        k.clone()
+    } else {
+        let kid_str = key
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .map(|s| s.trim_end_matches("-private"))
+            .unwrap_or("key-1")
+            .to_string();
+        eprintln!("[info] Using auto-derived kid: {}", kid_str);
+        kid_str
+    };
 
     // Default output path
     let out = args
@@ -149,7 +176,7 @@ fn run_non_interactive(args: SignArgs) -> Result<()> {
         .clone()
         .unwrap_or_else(|| payload.with_extension("jwt"));
 
-    let payload_content = fs::read_to_string(payload)
+    let payload_content = fs::read_to_string(&payload)
         .with_context(|| format!("failed to read payload file {}", payload.display()))?;
     let payload_json: Value =
         serde_json::from_str(&payload_content).context("payload is not valid JSON")?;
@@ -185,7 +212,7 @@ fn run_non_interactive(args: SignArgs) -> Result<()> {
 
     let token = sign_jws(
         &claims,
-        key,
+        &key,
         args.alg,
         Some(kid.clone()),
         kind.media_type(),

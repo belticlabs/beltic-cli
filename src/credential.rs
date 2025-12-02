@@ -2,7 +2,9 @@ use anyhow::{anyhow, Result};
 use chrono::{DateTime, Utc};
 use jsonschema::{Draft, JSONSchema};
 use serde_json::{Map, Value};
-use std::sync::OnceLock;
+use std::sync::{Mutex, OnceLock};
+
+use crate::schema::{self, SchemaType};
 
 /// Media type for DeveloperCredential JWTs.
 pub const DEVELOPER_TYP: &str = "application/beltic-developer+jwt";
@@ -44,12 +46,18 @@ impl CredentialKind {
             CredentialKind::Developer => "expirationDate",
         }
     }
+
+    fn schema_type(self) -> SchemaType {
+        match self {
+            CredentialKind::Agent => SchemaType::Agent,
+            CredentialKind::Developer => SchemaType::Developer,
+        }
+    }
 }
 
-static AGENT_SCHEMA: OnceLock<Value> = OnceLock::new();
-static DEVELOPER_SCHEMA: OnceLock<Value> = OnceLock::new();
-static AGENT_VALIDATOR: OnceLock<JSONSchema> = OnceLock::new();
-static DEVELOPER_VALIDATOR: OnceLock<JSONSchema> = OnceLock::new();
+// Use mutex-protected boxes for dynamic schema storage
+static AGENT_SCHEMA: OnceLock<Mutex<Option<Value>>> = OnceLock::new();
+static DEVELOPER_SCHEMA: OnceLock<Mutex<Option<Value>>> = OnceLock::new();
 
 /// Parse a credential type string (for CLI value parsers).
 pub fn parse_credential_kind(value: &str) -> Result<CredentialKind, String> {
@@ -95,9 +103,14 @@ pub fn detect_credential_kind(value: &Value) -> Option<CredentialKind> {
     None
 }
 
-/// Validate the credential JSON against the embedded schema.
+/// Validate the credential JSON against the schema.
+/// Uses dynamic schema fetching with caching and embedded fallback.
 pub fn validate_credential(kind: CredentialKind, value: &Value) -> Result<Vec<String>> {
-    let compiled = validator(kind);
+    // Ensure schema is loaded
+    let schema = ensure_schema_loaded(kind);
+
+    // Compile the schema (we compile fresh each time to use latest fetched schema)
+    let compiled = compile_schema(&schema);
 
     let mut errors = Vec::new();
     if let Err(iter) = compiled.validate(value) {
@@ -115,37 +128,42 @@ pub fn validate_credential(kind: CredentialKind, value: &Value) -> Result<Vec<St
     Ok(errors)
 }
 
-fn schema_value(kind: CredentialKind) -> &'static Value {
-    match kind {
-        CredentialKind::Agent => AGENT_SCHEMA.get_or_init(|| {
-            serde_json::from_str(include_str!(
+/// Get or fetch the schema for a credential kind.
+/// Uses dynamic fetching with caching and embedded fallback.
+fn get_or_fetch_schema(kind: CredentialKind) -> Value {
+    schema::get_schema(kind.schema_type()).unwrap_or_else(|_| {
+        // Ultimate fallback: use embedded schema
+        match kind {
+            CredentialKind::Agent => serde_json::from_str(include_str!(
                 "../schemas/agent/v1/agent-credential-v1.schema.json"
             ))
-            .expect("embedded agent schema should parse")
-        }),
-        CredentialKind::Developer => DEVELOPER_SCHEMA.get_or_init(|| {
-            serde_json::from_str(include_str!(
+            .expect("embedded agent schema should parse"),
+            CredentialKind::Developer => serde_json::from_str(include_str!(
                 "../schemas/developer/v1/developer-credential-v1.schema.json"
             ))
-            .expect("embedded developer schema should parse")
-        }),
-    }
-}
-
-fn validator(kind: CredentialKind) -> &'static JSONSchema {
-    match kind {
-        CredentialKind::Agent => AGENT_VALIDATOR.get_or_init(|| compile_schema(schema_value(kind))),
-        CredentialKind::Developer => {
-            DEVELOPER_VALIDATOR.get_or_init(|| compile_schema(schema_value(kind)))
+            .expect("embedded developer schema should parse"),
         }
-    }
+    })
 }
 
-fn compile_schema(schema: &'static Value) -> JSONSchema {
+fn ensure_schema_loaded(kind: CredentialKind) -> Value {
+    let schema_lock = match kind {
+        CredentialKind::Agent => AGENT_SCHEMA.get_or_init(|| Mutex::new(None)),
+        CredentialKind::Developer => DEVELOPER_SCHEMA.get_or_init(|| Mutex::new(None)),
+    };
+
+    let mut guard = schema_lock.lock().unwrap();
+    if guard.is_none() {
+        *guard = Some(get_or_fetch_schema(kind));
+    }
+    guard.as_ref().unwrap().clone()
+}
+
+fn compile_schema(schema: &Value) -> JSONSchema {
     JSONSchema::options()
         .with_draft(Draft::Draft202012)
         .compile(schema)
-        .expect("embedded schema should compile")
+        .expect("schema should compile")
 }
 
 /// Options for building JWT claims from a credential.
@@ -175,6 +193,15 @@ pub fn build_claims(
         .map(|s| s.to_string())
     {
         subject
+    } else if kind == CredentialKind::Agent {
+        // For agent credentials, use a DID derived from agentId
+        // Format: did:agent:{agentId}
+        let agent_id = credential
+            .get("agentId")
+            .and_then(|v| v.as_str())
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| "unknown".to_string());
+        format!("did:agent:{}", agent_id)
     } else {
         return Err(anyhow!(
             "subject DID is required (pass --subject or include subjectDid in the credential)"

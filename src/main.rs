@@ -1,7 +1,8 @@
 use anyhow::Result;
 use beltic::commands::{
-    self, dev_init::DevInitArgs, directory::DirectoryArgs, fingerprint::FingerprintArgs,
-    http_sign::HttpSignArgs, init::InitArgs, keygen::KeygenArgs, sign::SignArgs, verify::VerifyArgs,
+    self, credential_id::CredentialIdArgs, dev_init::DevInitArgs, directory::DirectoryArgs,
+    fingerprint::FingerprintArgs, http_sign::HttpSignArgs, init::InitArgs, keygen::KeygenArgs,
+    schema::SchemaArgs, sign::SignArgs, verify::VerifyArgs,
 };
 use clap::{Parser, Subcommand};
 
@@ -18,7 +19,7 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Command {
-    /// Initialize a new agent manifest
+    /// Initialize a new agent manifest or credential
     Init(InitArgs),
     /// Create a self-attested developer credential
     DevInit(DevInitArgs),
@@ -34,6 +35,10 @@ enum Command {
     HttpSign(HttpSignArgs),
     /// Manage HTTP Message Signatures key directories
     Directory(DirectoryArgs),
+    /// Extract credential ID from a credential JSON or JWT file
+    CredentialId(CredentialIdArgs),
+    /// Manage schema caching and updates
+    Schema(SchemaArgs),
 }
 
 fn main() -> Result<()> {
@@ -48,6 +53,8 @@ fn main() -> Result<()> {
         Command::Verify(args) => commands::verify::run(args)?,
         Command::HttpSign(args) => commands::http_sign::run(args)?,
         Command::Directory(args) => commands::directory::run(args)?,
+        Command::CredentialId(args) => commands::credential_id::run(args)?,
+        Command::Schema(args) => commands::schema::run(args)?,
     };
 
     Ok(())

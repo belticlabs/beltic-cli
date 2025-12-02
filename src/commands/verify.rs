@@ -92,17 +92,33 @@ fn run_interactive(mut args: VerifyArgs) -> Result<()> {
 }
 
 fn run_non_interactive(args: VerifyArgs) -> Result<()> {
-    // Validate required args
-    let key = args.key.as_ref().ok_or_else(|| {
-        anyhow!("--key is required in non-interactive mode (or run without --non-interactive)")
-    })?;
-    let token_input = args.token.as_ref().ok_or_else(|| {
-        anyhow!("--token is required in non-interactive mode")
-    })?;
+    // Auto-discover token if not provided
+    let token_input = if let Some(t) = args.token.as_ref() {
+        t.clone()
+    } else {
+        let tokens = find_tokens();
+        if tokens.is_empty() {
+            bail!("No token files (.jwt) found.");
+        }
+        eprintln!("[info] Using auto-discovered token: {}", tokens[0].display());
+        tokens[0].display().to_string()
+    };
 
-    let token = load_token(token_input)?;
+    // Auto-discover public key if not provided
+    let key = if let Some(k) = args.key.as_ref() {
+        k.clone()
+    } else {
+        let keys = find_public_keys();
+        if keys.is_empty() {
+            bail!("No public keys found.");
+        }
+        eprintln!("[info] Using auto-discovered key: {}", keys[0].display());
+        keys[0].clone()
+    };
 
-    match verify_jws(token.trim(), key) {
+    let token = load_token(&token_input)?;
+
+    match verify_jws(token.trim(), &key) {
         Ok(verified) => {
             if let Err(err) = validate_verified(verified, &args) {
                 eprintln!("INVALID: {err}");

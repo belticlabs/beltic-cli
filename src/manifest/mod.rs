@@ -1,4 +1,5 @@
 pub mod config;
+pub mod credential;
 pub mod detector;
 pub mod fingerprint;
 pub mod prompts;
@@ -13,10 +14,14 @@ use std::path::Path;
 use uuid::Uuid;
 
 use crate::manifest::config::BelticConfig;
+use crate::manifest::credential::{
+    AgentCredential, ArchitectureType as CredArchType, DataCategory as CredDataCategory,
+    Modality as CredModality, AgentStatus as CredAgentStatus, ComplianceCert,
+};
 use crate::manifest::detector::detect_project_info;
 use crate::manifest::fingerprint::{generate_fingerprint, FingerprintOptions};
 use crate::manifest::schema::{
-    AgentManifest, GenerationMetadata,
+    AgentManifest, GenerationMetadata, ArchitectureType, DataCategory, Modality, AgentStatus,
 };
 
 /// Options for manifest initialization
@@ -31,6 +36,10 @@ pub struct InitOptions {
     pub force: bool,
     pub interactive: bool,
     pub validate: bool,
+    /// Output schema-compliant AgentCredential instead of AgentManifest
+    pub credential: bool,
+    /// Issuer DID for self-signed credentials
+    pub issuer_did: Option<String>,
 }
 
 impl Default for InitOptions {
@@ -45,12 +54,19 @@ impl Default for InitOptions {
             force: false,
             interactive: true,  // Default to interactive mode
             validate: true,     // Default to validating
+            credential: false,  // Default to manifest output
+            issuer_did: None,
         }
     }
 }
 
-/// Initialize a new agent manifest
+/// Initialize a new agent manifest or credential
 pub fn init_manifest(options: &InitOptions) -> Result<()> {
+    // Route to credential generation if --credential flag is set
+    if options.credential {
+        return init_credential(options);
+    }
+
     // Use enhanced version if interactive mode is enabled (default)
     if options.interactive {
         init_manifest_interactive(options)
@@ -588,4 +604,232 @@ pub fn verify_fingerprint(manifest_path: Option<&str>) -> Result<()> {
     }
 
     Ok(())
+}
+
+// === Credential Generation Functions ===
+
+/// Initialize a schema-compliant agent credential (non-interactive)
+pub fn init_credential(options: &InitOptions) -> Result<()> {
+    let base_dir = std::env::current_dir()?;
+    let output_path = options
+        .output_path
+        .as_ref()
+        .map(|p| Path::new(p).to_path_buf())
+        .unwrap_or_else(|| base_dir.join("agent-credential.json"));
+
+    // Check if credential already exists
+    if output_path.exists() && !options.force {
+        anyhow::bail!(
+            "Credential already exists at {}. Use --force to overwrite.",
+            output_path.display()
+        );
+    }
+
+    println!("Initializing agent credential...");
+
+    // Load or create config
+    let config = if let Some(config_path) = &options.config_path {
+        let path = Path::new(config_path);
+        if path.exists() {
+            println!("  Found config file: {}", config_path);
+            BelticConfig::from_file(path)?
+        } else {
+            anyhow::bail!("Config file not found: {}", config_path);
+        }
+    } else if let Some(config) = BelticConfig::find_and_load(&base_dir)? {
+        println!("  Found .beltic.yaml configuration");
+        config
+    } else {
+        BelticConfig::default_standalone()
+    };
+
+    // Auto-detect project information
+    println!("  Detecting project information...");
+    let detection_results = detect_project_info(&base_dir)?;
+
+    let name = detection_results.project_name.clone()
+        .unwrap_or_else(|| base_dir.file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("agent")
+            .to_string());
+
+    let version = detection_results.project_version.clone()
+        .unwrap_or_else(|| "0.1.0".to_string());
+
+    println!("  Agent name: {}", name);
+    println!("  Version: {}", version);
+
+    // Generate fingerprint
+    println!("  Generating codebase fingerprint...");
+    let fingerprint_options = if let Some(ref includes) = options.include_patterns {
+        FingerprintOptions {
+            include_patterns: includes.clone(),
+            exclude_patterns: options.exclude_patterns.clone().unwrap_or_default(),
+            root_path: base_dir.clone(),
+            include_dependencies: true,
+            respect_gitignore: true,
+        }
+    } else {
+        FingerprintOptions::from_path_config(&config.agent.paths, base_dir.clone())
+    };
+
+    let fingerprint_result = generate_fingerprint(&fingerprint_options)?;
+    println!(
+        "  Fingerprint: {} ({} files)",
+        fingerprint_result.hash,
+        fingerprint_result.file_count
+    );
+
+    // Determine issuer DID
+    let issuer_did = options.issuer_did.clone()
+        .unwrap_or_else(|| format!("did:web:self.{}.local", name.to_lowercase().replace(' ', "-")));
+
+    // Create credential with defaults
+    let mut credential = AgentCredential::new_with_defaults(
+        name.clone(),
+        version,
+        fingerprint_result.hash,
+        issuer_did,
+    );
+
+    // Apply detected values
+    if let Some(desc) = detection_results.project_description {
+        if desc.len() >= 50 && desc.len() <= 1000 {
+            credential.agent_description = desc;
+        }
+    }
+
+    if let Some(date) = detection_results.first_release_date {
+        credential.first_release_date = date;
+    }
+
+    // Convert architecture type
+    if let Some(arch) = detection_results.architecture_type {
+        credential.architecture_type = convert_architecture_type(&arch);
+    }
+
+    // Convert modalities
+    if !detection_results.modality_support.is_empty() {
+        credential.modality_support = detection_results.modality_support
+            .iter()
+            .map(convert_modality)
+            .collect();
+    }
+
+    // Convert data categories and update compliance certs accordingly
+    if !detection_results.data_categories.is_empty() {
+        let converted_categories: Vec<CredDataCategory> = detection_results.data_categories
+            .iter()
+            .map(convert_data_category)
+            .collect();
+
+        // Update compliance certifications based on data categories
+        // Schema requires specific certs for certain data types
+        let mut certs = vec![ComplianceCert::GdprCompliant];
+
+        // PHI data requires HIPAA
+        if converted_categories.contains(&CredDataCategory::Phi) {
+            certs.push(ComplianceCert::Hipaa);
+        }
+
+        // Financial data requires PCI-DSS or SOC2 Type 2
+        if converted_categories.contains(&CredDataCategory::Financial) {
+            certs.push(ComplianceCert::PciDss);
+        }
+
+        // PII data with SOC2 Type 1 for general attestation
+        if converted_categories.contains(&CredDataCategory::Pii) {
+            certs.push(ComplianceCert::Soc2Type1);
+        }
+
+        // Deduplicate
+        certs.sort_by(|a, b| format!("{:?}", a).cmp(&format!("{:?}", b)));
+        certs.dedup();
+
+        credential.compliance_certifications = Some(certs);
+        credential.data_categories_processed = converted_categories;
+    }
+
+    // Set language capabilities
+    if !detection_results.language_capabilities.is_empty() {
+        credential.language_capabilities = detection_results.language_capabilities;
+    }
+
+    // Apply developer ID if provided
+    if let Some(dev_id) = options.developer_id {
+        credential.developer_credential_id = dev_id;
+    }
+
+    // Write credential
+    let json = serde_json::to_string_pretty(&credential)?;
+    fs::write(&output_path, json)?;
+
+    println!("\nCreated {}", output_path.display());
+    println!("\nNext steps:");
+    if credential.developer_credential_id == Uuid::nil() {
+        println!("1. Obtain developer credential from Beltic or create self-signed");
+        println!("2. Run: beltic init --developer-id <credential-id>");
+    }
+    println!("3. Sign credential: beltic sign --payload {}", output_path.display());
+
+    // Write .beltic.yaml if it doesn't exist
+    let beltic_yaml_path = base_dir.join(".beltic.yaml");
+    if !beltic_yaml_path.exists() {
+        config.save_to_file(&beltic_yaml_path)?;
+        println!("Created {}", beltic_yaml_path.display());
+    }
+
+    Ok(())
+}
+
+// === Type conversion helpers ===
+
+fn convert_architecture_type(arch: &ArchitectureType) -> CredArchType {
+    match arch {
+        ArchitectureType::SingleAgent => CredArchType::SingleAgent,
+        ArchitectureType::MultiAgent => CredArchType::MultiAgent,
+        ArchitectureType::Rag => CredArchType::Rag,
+        ArchitectureType::ToolUsing => CredArchType::ToolUsing,
+        ArchitectureType::AgenticWorkflow => CredArchType::AgenticWorkflow,
+        ArchitectureType::FineTuned => CredArchType::FineTuned,
+        ArchitectureType::Hybrid => CredArchType::Hybrid,
+    }
+}
+
+fn convert_modality(modality: &Modality) -> CredModality {
+    match modality {
+        Modality::Text => CredModality::Text,
+        Modality::Image => CredModality::Image,
+        Modality::Audio => CredModality::Audio,
+        Modality::Video => CredModality::Video,
+        Modality::Code => CredModality::Text,           // Map Code to Text
+        Modality::StructuredData => CredModality::Text, // Map StructuredData to Text
+    }
+}
+
+fn convert_data_category(cat: &DataCategory) -> CredDataCategory {
+    match cat {
+        DataCategory::Pii => CredDataCategory::Pii,
+        DataCategory::Phi => CredDataCategory::Phi,
+        DataCategory::Financial => CredDataCategory::Financial,
+        DataCategory::Biometric => CredDataCategory::Biometric,
+        DataCategory::Behavioral => CredDataCategory::Behavioral,
+        DataCategory::Authentication => CredDataCategory::Authentication,
+        DataCategory::Proprietary => CredDataCategory::Proprietary,
+        DataCategory::GovernmentId => CredDataCategory::GovernmentId,
+        DataCategory::ChildrenData => CredDataCategory::ChildrenData,
+        DataCategory::None => CredDataCategory::None,
+    }
+}
+
+#[allow(dead_code)]
+fn convert_agent_status(status: &AgentStatus) -> CredAgentStatus {
+    match status {
+        AgentStatus::Alpha => CredAgentStatus::Alpha,
+        AgentStatus::Beta => CredAgentStatus::Beta,
+        AgentStatus::Production => CredAgentStatus::Production,
+        AgentStatus::Deprecated => CredAgentStatus::Deprecated,
+        AgentStatus::Retired => CredAgentStatus::Retired,
+        AgentStatus::Internal => CredAgentStatus::Alpha, // Map Internal to Alpha
+    }
 }

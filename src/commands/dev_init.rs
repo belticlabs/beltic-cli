@@ -4,6 +4,7 @@
 
 use std::fs;
 use std::path::PathBuf;
+use std::process::Command;
 
 use anyhow::{Context, Result};
 use chrono::{Duration, Utc};
@@ -14,6 +15,96 @@ use uuid::Uuid;
 
 use super::discovery::find_public_keys;
 use super::prompts::CommandPrompts;
+
+/// Git-based auto-detection results
+#[derive(Debug, Default)]
+struct GitDefaults {
+    name: Option<String>,
+    email: Option<String>,
+    website: Option<String>,
+}
+
+/// Detect defaults from git config
+fn detect_git_defaults() -> GitDefaults {
+    let mut defaults = GitDefaults::default();
+
+    // Get user.name from git config
+    if let Ok(output) = Command::new("git").args(["config", "--get", "user.name"]).output() {
+        if output.status.success() {
+            let name = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if !name.is_empty() {
+                defaults.name = Some(name);
+            }
+        }
+    }
+
+    // Get user.email from git config
+    if let Ok(output) = Command::new("git").args(["config", "--get", "user.email"]).output() {
+        if output.status.success() {
+            let email = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            if !email.is_empty() {
+                defaults.email = Some(email.clone());
+                // Try to derive website from email domain
+                if defaults.website.is_none() {
+                    if let Some(domain) = email.split('@').nth(1) {
+                        // Skip common email providers
+                        if !["gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com", "protonmail.com"].contains(&domain) {
+                            defaults.website = Some(format!("https://{}", domain));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Try to get website from remote origin
+    if defaults.website.is_none() {
+        if let Ok(output) = Command::new("git").args(["remote", "get-url", "origin"]).output() {
+            if output.status.success() {
+                let remote = String::from_utf8_lossy(&output.stdout).trim().to_string();
+                // Parse GitHub/GitLab URLs
+                if let Some(url) = parse_git_remote_to_website(&remote) {
+                    defaults.website = Some(url);
+                }
+            }
+        }
+    }
+
+    defaults
+}
+
+/// Parse git remote URL to website URL
+fn parse_git_remote_to_website(remote: &str) -> Option<String> {
+    // Handle SSH URLs: git@github.com:user/repo.git
+    if remote.starts_with("git@github.com:") {
+        let path = remote.strip_prefix("git@github.com:")?.strip_suffix(".git").unwrap_or(remote.strip_prefix("git@github.com:")?);
+        let user = path.split('/').next()?;
+        return Some(format!("https://github.com/{}", user));
+    }
+
+    // Handle HTTPS URLs: https://github.com/user/repo.git
+    if remote.starts_with("https://github.com/") {
+        let path = remote.strip_prefix("https://github.com/")?.strip_suffix(".git").unwrap_or(remote.strip_prefix("https://github.com/")?);
+        let user = path.split('/').next()?;
+        return Some(format!("https://github.com/{}", user));
+    }
+
+    // Handle GitLab
+    if remote.contains("gitlab.com") {
+        if remote.starts_with("git@gitlab.com:") {
+            let path = remote.strip_prefix("git@gitlab.com:")?.strip_suffix(".git").unwrap_or(remote.strip_prefix("git@gitlab.com:")?);
+            let user = path.split('/').next()?;
+            return Some(format!("https://gitlab.com/{}", user));
+        }
+        if remote.starts_with("https://gitlab.com/") {
+            let path = remote.strip_prefix("https://gitlab.com/")?.strip_suffix(".git").unwrap_or(remote.strip_prefix("https://gitlab.com/")?);
+            let user = path.split('/').next()?;
+            return Some(format!("https://gitlab.com/{}", user));
+        }
+    }
+
+    None
+}
 
 /// Entity types for developer credentials
 const ENTITY_TYPES: &[(&str, &str)] = &[
@@ -94,9 +185,15 @@ fn run_interactive(mut args: DevInitArgs) -> Result<()> {
     prompts.info("Create a self-attested developer credential for agent signing.")?;
     prompts.info("This credential identifies you as the developer of AI agents.")?;
 
+    // Detect git defaults for suggestions
+    let git_defaults = detect_git_defaults();
+
     // 1. Legal name
     if args.name.is_none() {
-        args.name = Some(prompts.prompt_string("Legal name (person or organization)", None)?);
+        args.name = Some(prompts.prompt_string(
+            "Legal name (person or organization)",
+            git_defaults.name.as_deref(),
+        )?);
     }
 
     // 2. Entity type
@@ -124,12 +221,16 @@ fn run_interactive(mut args: DevInitArgs) -> Result<()> {
 
     // 4. Website
     if args.website.is_none() {
-        args.website = Some(prompts.prompt_string("Website URL", Some("https://"))?);
+        let default_website = git_defaults.website.as_deref().unwrap_or("https://");
+        args.website = Some(prompts.prompt_string("Website URL", Some(default_website))?);
     }
 
     // 5. Email
     if args.email.is_none() {
-        args.email = Some(prompts.prompt_string("Business email", None)?);
+        args.email = Some(prompts.prompt_string(
+            "Business email",
+            git_defaults.email.as_deref(),
+        )?);
     }
 
     // 6. Public key (optional)
@@ -190,16 +291,40 @@ fn run_interactive(mut args: DevInitArgs) -> Result<()> {
     Ok(())
 }
 
-fn run_non_interactive(args: DevInitArgs) -> Result<()> {
-    // Validate required fields in non-interactive mode
+fn run_non_interactive(mut args: DevInitArgs) -> Result<()> {
+    // Apply git defaults for missing fields
+    let git_defaults = detect_git_defaults();
+
     if args.name.is_none() {
-        anyhow::bail!("--name is required in non-interactive mode");
+        if let Some(name) = git_defaults.name {
+            eprintln!("[info] Using git user.name: {}", name);
+            args.name = Some(name);
+        }
+    }
+
+    if args.email.is_none() {
+        if let Some(email) = git_defaults.email {
+            eprintln!("[info] Using git user.email: {}", email);
+            args.email = Some(email);
+        }
+    }
+
+    if args.website.is_none() {
+        if let Some(website) = git_defaults.website {
+            eprintln!("[info] Using derived website: {}", website);
+            args.website = Some(website);
+        }
+    }
+
+    // Validate required fields after applying defaults
+    if args.name.is_none() {
+        anyhow::bail!("--name is required (not found in git config)");
     }
     if args.email.is_none() {
-        anyhow::bail!("--email is required in non-interactive mode");
+        anyhow::bail!("--email is required (not found in git config)");
     }
     if args.website.is_none() {
-        anyhow::bail!("--website is required in non-interactive mode");
+        anyhow::bail!("--website is required (could not derive from git remote)");
     }
 
     let output_path = args.output.clone().unwrap_or_else(|| PathBuf::from("developer-credential.json"));

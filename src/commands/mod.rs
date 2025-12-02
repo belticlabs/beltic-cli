@@ -1,3 +1,4 @@
+pub mod credential_id;
 pub mod dev_init;
 pub mod directory;
 pub mod discovery;
@@ -6,5 +7,6 @@ pub mod http_sign;
 pub mod init;
 pub mod keygen;
 pub mod prompts;
+pub mod schema;
 pub mod sign;
 pub mod verify;
