@@ -110,45 +110,45 @@ jobs:
           SHA_ARM64_LINUX=$(sha256sum artifacts/beltic-aarch64-unknown-linux-gnu/beltic-aarch64-unknown-linux-gnu.tar.gz | cut -d ' ' -f 1)
           SHA_X64_LINUX=$(sha256sum artifacts/beltic-x86_64-unknown-linux-gnu/beltic-x86_64-unknown-linux-gnu.tar.gz | cut -d ' ' -f 1)
           
-          # Write the formula
-          cat > homebrew-tap/Formula/beltic.rb << EOF
-class Beltic < Formula
-  desc "CLI for managing and signing verifiable credentials for AI agents"
-  homepage "https://github.com/belticlabs/beltic-cli"
-  version "${VERSION}"
-  license "MIT"
-
-  on_macos do
-    on_arm do
-      url "https://github.com/belticlabs/beltic-cli/releases/download/v${VERSION}/beltic-aarch64-apple-darwin.tar.gz"
-      sha256 "${SHA_ARM64_DARWIN}"
-    end
-    on_intel do
-      url "https://github.com/belticlabs/beltic-cli/releases/download/v${VERSION}/beltic-x86_64-apple-darwin.tar.gz"
-      sha256 "${SHA_X64_DARWIN}"
-    end
-  end
-
-  on_linux do
-    on_arm do
-      url "https://github.com/belticlabs/beltic-cli/releases/download/v${VERSION}/beltic-aarch64-unknown-linux-gnu.tar.gz"
-      sha256 "${SHA_ARM64_LINUX}"
-    end
-    on_intel do
-      url "https://github.com/belticlabs/beltic-cli/releases/download/v${VERSION}/beltic-x86_64-unknown-linux-gnu.tar.gz"
-      sha256 "${SHA_X64_LINUX}"
-    end
-  end
-
-  def install
-    bin.install "beltic"
-  end
-
-  test do
-    assert_match "beltic", shell_output("#{bin}/beltic --version")
-  end
-end
-EOF
+          # Write the formula using printf to avoid heredoc YAML issues
+          printf '%s\n' \
+            'class Beltic < Formula' \
+            '  desc "CLI for managing and signing verifiable credentials for AI agents"' \
+            '  homepage "https://github.com/belticlabs/beltic-cli"' \
+            "  version \"${VERSION}\"" \
+            '  license "MIT"' \
+            '' \
+            '  on_macos do' \
+            '    on_arm do' \
+            "      url \"https://github.com/belticlabs/beltic-cli/releases/download/v${VERSION}/beltic-aarch64-apple-darwin.tar.gz\"" \
+            "      sha256 \"${SHA_ARM64_DARWIN}\"" \
+            '    end' \
+            '    on_intel do' \
+            "      url \"https://github.com/belticlabs/beltic-cli/releases/download/v${VERSION}/beltic-x86_64-apple-darwin.tar.gz\"" \
+            "      sha256 \"${SHA_X64_DARWIN}\"" \
+            '    end' \
+            '  end' \
+            '' \
+            '  on_linux do' \
+            '    on_arm do' \
+            "      url \"https://github.com/belticlabs/beltic-cli/releases/download/v${VERSION}/beltic-aarch64-unknown-linux-gnu.tar.gz\"" \
+            "      sha256 \"${SHA_ARM64_LINUX}\"" \
+            '    end' \
+            '    on_intel do' \
+            "      url \"https://github.com/belticlabs/beltic-cli/releases/download/v${VERSION}/beltic-x86_64-unknown-linux-gnu.tar.gz\"" \
+            "      sha256 \"${SHA_X64_LINUX}\"" \
+            '    end' \
+            '  end' \
+            '' \
+            '  def install' \
+            '    bin.install "beltic"' \
+            '  end' \
+            '' \
+            '  test do' \
+            '    assert_match "beltic", shell_output("#{bin}/beltic --version")' \
+            '  end' \
+            'end' \
+            > homebrew-tap/Formula/beltic.rb
 
       - name: Commit and push
         env:
