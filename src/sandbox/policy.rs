@@ -48,6 +48,9 @@ pub struct NetworkPolicy {
     /// Allowed API domains (extracted from model providers + tools)
     pub allowed_domains: Vec<String>,
 
+    /// Prohibited domains (blacklist)
+    pub prohibited_domains: Vec<String>,
+
     /// Whether external API access is permitted
     pub external_api_allowed: bool,
 }
@@ -188,8 +191,18 @@ fn extract_network_policy(manifest: &AgentManifest) -> NetworkPolicy {
         })
         .unwrap_or(false);
 
+    // Build prohibited domains list (common malicious/suspicious patterns)
+    let prohibited_domains = vec![
+        "pastebin.com".to_string(),
+        "hastebin.com".to_string(),
+        "ix.io".to_string(),
+        "0x0.st".to_string(),
+        // Add more as needed
+    ];
+
     NetworkPolicy {
         allowed_domains,
+        prohibited_domains,
         external_api_allowed: has_external_tools,
     }
 }

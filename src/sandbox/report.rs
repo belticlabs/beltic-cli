@@ -219,5 +219,6 @@ impl SandboxReport {
         println!("  Observations: {}", self.summary.total_observations);
         println!("  Tools declared: {}", self.policy.tools.len());
         println!("  Allowed domains: {}", self.policy.network.allowed_domains.len());
+        println!("  Prohibited domains: {}", self.policy.network.prohibited_domains.len());
     }
 }

@@ -177,7 +177,26 @@ impl SandboxMonitor {
             if let Some(domain_match) = capture.get(1) {
                 let domain = domain_match.as_str();
 
-                // Check if domain is in allowed list
+                // 1. Check if domain is prohibited (High Severity)
+                let is_prohibited = self
+                    .policy
+                    .network
+                    .prohibited_domains
+                    .iter()
+                    .any(|prohibited| domain.contains(prohibited) || prohibited.contains(domain));
+
+                if is_prohibited {
+                    self.add_violation(Violation {
+                        timestamp: timestamp.to_string(),
+                        violation_type: ViolationType::NetworkAccessDenied,
+                        severity: Severity::High,
+                        description: "Network access to prohibited domain".to_string(),
+                        details: format!("Attempted access to: {}", domain),
+                    });
+                    continue;
+                }
+
+                // 2. Check if domain is allowed (or external API allowed)
                 let is_allowed = self
                     .policy
                     .network

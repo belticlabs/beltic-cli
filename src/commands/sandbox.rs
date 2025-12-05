@@ -40,10 +40,10 @@ pub fn run(args: SandboxArgs) -> Result<()> {
     let policy = extract_policy(&manifest)?;
 
     eprintln!("[info] Testing agent: {} v{}", manifest.agent_name, manifest.agent_version);
-    eprintln!("[info] Policy: {} tools, {} file paths, {} domains",
+    eprintln!("[info] Policy: {} tools, {} file paths, {} prohibited domains",
               policy.tools.len(),
               policy.filesystem.allowed_read_paths.len(),
-              policy.network.allowed_domains.len());
+              policy.network.prohibited_domains.len());
 
     if args.show_policy {
         print_detailed_policy(&policy);
@@ -88,13 +88,22 @@ fn print_detailed_policy(policy: &crate::sandbox::SandboxPolicy) {
     }
 
     println!("\nNetwork:");
+    println!("  Allowed domains:");
     for domain in &policy.network.allowed_domains {
-        println!("  {}", domain);
+        println!("    {}", style(domain).dim());
     }
+    
+    if !policy.network.prohibited_domains.is_empty() {
+        println!("  Prohibited domains:");
+        for domain in &policy.network.prohibited_domains {
+            println!("    {}", style(domain).red());
+        }
+    }
+
     if !policy.network.external_api_allowed {
         println!("  {}", style("(external APIs blocked)").dim());
     }
-
+    
     if !policy.tools.is_empty() {
         println!("\nTools ({}):", policy.tools.len());
         for tool in &policy.tools {
