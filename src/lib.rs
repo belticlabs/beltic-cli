@@ -2,4 +2,5 @@ pub mod commands;
 pub mod credential;
 pub mod crypto;
 pub mod manifest;
+pub mod sandbox;
 pub mod schema;
