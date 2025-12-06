@@ -2,7 +2,7 @@ use anyhow::Result;
 use beltic::commands::{
     self, credential_id::CredentialIdArgs, dev_init::DevInitArgs, directory::DirectoryArgs,
     fingerprint::FingerprintArgs, http_sign::HttpSignArgs, init::InitArgs, keygen::KeygenArgs,
-    schema::SchemaArgs, sign::SignArgs, verify::VerifyArgs,
+    sandbox::SandboxArgs, schema::SchemaArgs, sign::SignArgs, verify::VerifyArgs,
 };
 use clap::{Parser, Subcommand};
 
@@ -39,6 +39,8 @@ enum Command {
     CredentialId(CredentialIdArgs),
     /// Manage schema caching and updates
     Schema(SchemaArgs),
+    /// Run agent in sandboxed environment for testing
+    Sandbox(SandboxArgs),
 }
 
 fn main() -> Result<()> {
@@ -55,6 +57,7 @@ fn main() -> Result<()> {
         Command::Directory(args) => commands::directory::run(args)?,
         Command::CredentialId(args) => commands::credential_id::run(args)?,
         Command::Schema(args) => commands::schema::run(args)?,
+        Command::Sandbox(args) => commands::sandbox::run(args)?,
     };
 
     Ok(())
