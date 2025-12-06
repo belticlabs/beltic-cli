@@ -18,6 +18,10 @@ Lightweight checklist for publishing a Beltic CLI release.
   - `gh release create vX.Y.Z --generate-notes` or publish via the GitHub UI.
 - Verify `install.sh` resolves the new release asset and that download/install succeeds end-to-end.
 
+## Linux ARM64 build notes
+- CI installs `gcc-aarch64-linux-gnu`, `pkg-config`, and `libssl-dev:arm64` with `PKG_CONFIG_PATH`/`OPENSSL_*` set for cross-compiling `aarch64-unknown-linux-gnu`.
+- If building locally, mirror those env vars and packages or use a containerized cross toolchain.
+
 ## Release notes (v0.1.2)
 - New `sandbox` command for pre-deployment runs with manifest-derived policy enforcement and JSON reports.
 - Auto-discovery defaults for signing and verification flows to reduce required flags.
