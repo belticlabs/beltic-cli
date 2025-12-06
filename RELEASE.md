@@ -1,0 +1,19 @@
+# Release Process
+
+Lightweight checklist for publishing a Beltic CLI release.
+
+## Prepare
+- Ensure a clean working tree on `master`.
+- Verify `Cargo.toml`/`Cargo.lock` carry the target version (e.g., `0.1.2`).
+- Run quality gates: `cargo fmt --all`, `cargo clippy --all-targets --all-features -D warnings`, `cargo test --all`.
+
+## Tag and push
+- Draft notes from recent commits: `git log $(git describe --tags --abbrev=0)..HEAD --oneline`.
+- Create an annotated tag: `git tag -a vX.Y.Z -m "Release vX.Y.Z"` (match the Cargo version).
+- Push the tag: `git push origin vX.Y.Z`.
+
+## Publish
+- Build once locally for sanity: `cargo build --release`.
+- Create the GitHub release (after CI artifacts are ready) with notes and checksums if applicable, e.g.:
+  - `gh release create vX.Y.Z --generate-notes` or publish via the GitHub UI.
+- Verify `install.sh` resolves the new release asset and that download/install succeeds end-to-end.
