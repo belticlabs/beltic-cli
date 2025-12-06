@@ -34,11 +34,21 @@ impl ManifestTemplates {
     /// Get default deployment environment based on deployment type
     pub fn default_deployment_environment(deployment_type: &DeploymentType) -> String {
         match deployment_type {
-            DeploymentType::Standalone => "Local development environment, containerized for production deployment".to_string(),
-            DeploymentType::Monorepo => "Monorepo deployment within shared infrastructure, isolated runtime".to_string(),
-            DeploymentType::Embedded => "Embedded within host application, shared runtime environment".to_string(),
-            DeploymentType::Plugin => "Plugin architecture with sandboxed execution environment".to_string(),
-            DeploymentType::Serverless => "Serverless function deployment, auto-scaling infrastructure".to_string(),
+            DeploymentType::Standalone => {
+                "Local development environment, containerized for production deployment".to_string()
+            }
+            DeploymentType::Monorepo => {
+                "Monorepo deployment within shared infrastructure, isolated runtime".to_string()
+            }
+            DeploymentType::Embedded => {
+                "Embedded within host application, shared runtime environment".to_string()
+            }
+            DeploymentType::Plugin => {
+                "Plugin architecture with sandboxed execution environment".to_string()
+            }
+            DeploymentType::Serverless => {
+                "Serverless function deployment, auto-scaling infrastructure".to_string()
+            }
         }
     }
 
@@ -99,8 +109,11 @@ impl ManifestTemplates {
                     Alert thresholds: >1% error rate, >2s p95 latency.";
 
         if has_tools {
-            format!("{} Tool usage tracked with detailed audit logs. \
-                     Risk-based alerts for sensitive operations.", base)
+            format!(
+                "{} Tool usage tracked with detailed audit logs. \
+                     Risk-based alerts for sensitive operations.",
+                base
+            )
         } else {
             base.to_string()
         }
@@ -292,7 +305,8 @@ pub fn generate_complete_defaults(
     manifest.pii_redaction_capability = PiiRedactionCapability::Basic;
 
     // Set use cases
-    manifest.approved_use_cases = Some(ManifestTemplates::default_approved_use_cases(&architecture));
+    manifest.approved_use_cases =
+        Some(ManifestTemplates::default_approved_use_cases(&architecture));
     manifest.prohibited_use_cases = Some(ManifestTemplates::default_prohibited_use_cases());
 
     manifest

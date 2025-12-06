@@ -116,7 +116,7 @@ pub struct AgentCredential {
     pub kyb_tier_required: KybTier,
 
     // === Credential Metadata ===
-    pub credential_issuance_date: String, // RFC3339
+    pub credential_issuance_date: String,   // RFC3339
     pub credential_expiration_date: String, // RFC3339
     pub overall_safety_rating: SafetyRating,
     pub verification_level: VerificationLevel,
@@ -229,9 +229,15 @@ pub enum ModelFamily {
 impl ModelFamily {
     pub fn from_display_name(name: &str) -> Self {
         let lower = name.to_lowercase();
-        if lower.contains("claude-3.5") || lower.contains("claude 3.5") || lower.contains("sonnet 3.5") {
+        if lower.contains("claude-3.5")
+            || lower.contains("claude 3.5")
+            || lower.contains("sonnet 3.5")
+        {
             ModelFamily::Claude35Sonnet
-        } else if lower.contains("claude-4") || lower.contains("claude 4") || lower.contains("sonnet 4") {
+        } else if lower.contains("claude-4")
+            || lower.contains("claude 4")
+            || lower.contains("sonnet 4")
+        {
             ModelFamily::Claude4
         } else if lower.contains("claude-3") && lower.contains("opus") {
             ModelFamily::Claude3Opus
@@ -272,7 +278,9 @@ impl ModelFamily {
 
     pub fn default_context_window(&self) -> u32 {
         match self {
-            ModelFamily::Claude3Opus | ModelFamily::Claude3Sonnet | ModelFamily::Claude3Haiku => 200000,
+            ModelFamily::Claude3Opus | ModelFamily::Claude3Sonnet | ModelFamily::Claude3Haiku => {
+                200000
+            }
             ModelFamily::Claude35Sonnet | ModelFamily::Claude4 => 200000,
             ModelFamily::Gpt4 => 32000,
             ModelFamily::Gpt4Turbo | ModelFamily::Gpt4o | ModelFamily::Gpt4oMini => 128000,
@@ -625,7 +633,9 @@ impl AgentCredential {
             .to_string();
 
         Self {
-            schema: Some("https://schema.beltic.com/agent/v1/agent-credential-v1.schema.json".to_string()),
+            schema: Some(
+                "https://schema.beltic.com/agent/v1/agent-credential-v1.schema.json".to_string(),
+            ),
             schema_version: "1.0".to_string(),
             agent_id: Uuid::new_v4(),
             agent_name: agent_name.clone(),
@@ -694,12 +704,17 @@ impl AgentCredential {
             pii_leakage_assurance_source: AssuranceSource::SelfAttested,
             incident_response_contact: "security@example.com".to_string(),
             incident_response_slo: "PT4H".to_string(),
-            deprecation_policy: "Minimum 30-day notice via email. Migration guide provided.".to_string(),
+            deprecation_policy: "Minimum 30-day notice via email. Migration guide provided."
+                .to_string(),
             update_cadence: UpdateCadence::AsNeeded,
             human_oversight_mode: HumanOversightMode::AutonomousLowRisk,
-            fail_safe_behavior: "On error, returns helpful message and logs incident. No automated retries.".to_string(),
+            fail_safe_behavior:
+                "On error, returns helpful message and logs incident. No automated retries."
+                    .to_string(),
             // Must be at least 50 characters per schema
-            monitoring_coverage: "Real-time monitoring enabled with logging, error tracking, and basic alerting.".to_string(),
+            monitoring_coverage:
+                "Real-time monitoring enabled with logging, error tracking, and basic alerting."
+                    .to_string(),
             approved_use_cases: None,
             prohibited_use_cases: None,
             age_restrictions: AgeRestriction::None,
@@ -720,7 +735,8 @@ impl AgentCredential {
                 verification_method: format!("{}#key-1", issuer_did),
                 proof_purpose: ProofPurpose::AssertionMethod,
                 // Placeholder meets 40+ char minimum, will be replaced by signing
-                proof_value: "placeholder-proof-value-will-be-replaced-by-jws-signature".to_string(),
+                proof_value: "placeholder-proof-value-will-be-replaced-by-jws-signature"
+                    .to_string(),
                 challenge: None,
                 domain: None,
             },

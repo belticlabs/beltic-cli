@@ -47,8 +47,7 @@ pub struct VerifyArgs {
 
 pub fn run(args: VerifyArgs) -> Result<()> {
     // Determine if we need interactive mode
-    let needs_interactive =
-        (args.key.is_none() || args.token.is_none()) && !args.non_interactive;
+    let needs_interactive = (args.key.is_none() || args.token.is_none()) && !args.non_interactive;
 
     if needs_interactive {
         run_interactive(args)
@@ -100,7 +99,10 @@ fn run_non_interactive(args: VerifyArgs) -> Result<()> {
         if tokens.is_empty() {
             bail!("No token files (.jwt) found.");
         }
-        eprintln!("[info] Using auto-discovered token: {}", tokens[0].display());
+        eprintln!(
+            "[info] Using auto-discovered token: {}",
+            tokens[0].display()
+        );
         tokens[0].display().to_string()
     };
 
@@ -134,8 +136,12 @@ fn run_non_interactive(args: VerifyArgs) -> Result<()> {
 }
 
 fn do_verify(args: &VerifyArgs, prompts: &CommandPrompts) -> Result<()> {
-    let key = args.key.as_ref().expect("key should be set");
-    let token_input = args.token.as_ref().expect("token should be set");
+    let key = args.key.as_ref().ok_or_else(|| {
+        anyhow!("public key is required; rerun without --non-interactive to select one")
+    })?;
+    let token_input = args.token.as_ref().ok_or_else(|| {
+        anyhow!("token input is required; rerun without --non-interactive to select one")
+    })?;
 
     prompts.info(&format!("Loading token from: {}", token_input))?;
     let token = load_token(token_input)?;

@@ -63,7 +63,10 @@ fn print_cache_status(name: &str, schema_type: SchemaType) {
                 };
                 println!("    Status: {} Cached ({})", valid_icon, age_str);
                 if !status.valid {
-                    println!("    {}", style("  Cache expired, will refresh on next use").dim());
+                    println!(
+                        "    {}",
+                        style("  Cache expired, will refresh on next use").dim()
+                    );
                 }
             } else {
                 println!("    Status: {} Not cached", style("○").dim());
@@ -71,7 +74,10 @@ fn print_cache_status(name: &str, schema_type: SchemaType) {
         }
         None => {
             println!("  {}:", style(name).bold());
-            println!("    Status: {} Unable to determine cache location", style("?").yellow());
+            println!(
+                "    Status: {} Unable to determine cache location",
+                style("?").yellow()
+            );
         }
     }
     println!();
@@ -123,10 +129,7 @@ fn run_clear() -> Result<()> {
         Ok(_) => {
             println!("{}", style("done").green());
             println!();
-            println!(
-                "{}",
-                style("Schemas will be re-fetched on next use.").dim()
-            );
+            println!("{}", style("Schemas will be re-fetched on next use.").dim());
         }
         Err(e) => {
             println!("{} ({})", style("failed").red(), e);

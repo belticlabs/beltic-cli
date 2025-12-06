@@ -78,7 +78,10 @@ pub fn run(args: HttpSignArgs) -> Result<()> {
     if !args.key_directory.starts_with("https://") {
         bail!("key-directory must be an HTTPS URL");
     }
-    if !args.key_directory.ends_with("/.well-known/http-message-signatures-directory") {
+    if !args
+        .key_directory
+        .ends_with("/.well-known/http-message-signatures-directory")
+    {
         eprintln!(
             "Warning: key-directory should end with /.well-known/http-message-signatures-directory"
         );
@@ -107,7 +110,10 @@ pub fn run(args: HttpSignArgs) -> Result<()> {
         authority.to_string()
     };
     let path = parsed_url.path();
-    let query = parsed_url.query().map(|q| format!("?{}", q)).unwrap_or_default();
+    let query = parsed_url
+        .query()
+        .map(|q| format!("?{}", q))
+        .unwrap_or_default();
 
     // Parse additional headers
     let mut headers: HashMap<String, String> = HashMap::new();
@@ -121,9 +127,10 @@ pub fn run(args: HttpSignArgs) -> Result<()> {
 
     // Handle body and Content-Digest
     let body = if let Some(body_path) = &args.body_file {
-        Some(fs::read_to_string(body_path).with_context(|| {
-            format!("failed to read body file {}", body_path.display())
-        })?)
+        Some(
+            fs::read_to_string(body_path)
+                .with_context(|| format!("failed to read body file {}", body_path.display()))?,
+        )
     } else {
         args.body.clone()
     };
@@ -170,7 +177,11 @@ pub fn run(args: HttpSignArgs) -> Result<()> {
     let nonce = URL_SAFE_NO_PAD.encode(nonce_bytes);
 
     // Build signature params
-    let component_list = components.iter().map(|c| format!("\"{}\"", c)).collect::<Vec<_>>().join(" ");
+    let component_list = components
+        .iter()
+        .map(|c| format!("\"{}\"", c))
+        .collect::<Vec<_>>()
+        .join(" ");
     let signature_params = format!(
         "({});alg=\"ed25519\";keyid=\"{}\";created={};expires={};nonce=\"{}\";tag=\"web-bot-auth\"",
         component_list, thumbprint, created, expires, nonce
@@ -184,7 +195,13 @@ pub fn run(args: HttpSignArgs) -> Result<()> {
             "@authority" => authority.clone(),
             "@scheme" => parsed_url.scheme().to_string(),
             "@path" => path.to_string(),
-            "@query" => if query.is_empty() { "?".to_string() } else { query.clone() },
+            "@query" => {
+                if query.is_empty() {
+                    "?".to_string()
+                } else {
+                    query.clone()
+                }
+            }
             "@target-uri" => args.url.clone(),
             "@request-target" => format!("{} {}{}", args.method.to_lowercase(), path, query),
             "signature-agent" => format!("\"{}\"", args.key_directory),
@@ -236,14 +253,20 @@ pub fn run(args: HttpSignArgs) -> Result<()> {
                 }
             }
             if let Some(ref body_content) = body {
-                curl_cmd.push_str(&format!(" \\\n  -d '{}'", body_content.replace('\'', "'\\''")));
+                curl_cmd.push_str(&format!(
+                    " \\\n  -d '{}'",
+                    body_content.replace('\'', "'\\''")
+                ));
             }
             println!("{}", curl_cmd);
         }
     }
 
     eprintln!("\nKey ID (JWK thumbprint): {}", thumbprint);
-    eprintln!("Signature valid for {} seconds (expires at {})", args.expires_in, expires);
+    eprintln!(
+        "Signature valid for {} seconds (expires at {})",
+        args.expires_in, expires
+    );
 
     Ok(())
 }
@@ -272,5 +295,3 @@ fn compute_content_digest(body: &[u8]) -> String {
     let hash = hasher.finalize();
     format!("sha-256=:{}:", URL_SAFE_NO_PAD.encode(hash))
 }
-
-

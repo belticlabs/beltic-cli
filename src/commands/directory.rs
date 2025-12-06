@@ -99,8 +99,12 @@ fn run_generate(args: GenerateArgs) -> Result<()> {
         let pem = fs::read_to_string(key_path)
             .with_context(|| format!("failed to read public key {}", key_path.display()))?;
 
-        let verifying_key = VerifyingKey::from_public_key_pem(&pem)
-            .with_context(|| format!("failed to parse Ed25519 public key from {}", key_path.display()))?;
+        let verifying_key = VerifyingKey::from_public_key_pem(&pem).with_context(|| {
+            format!(
+                "failed to parse Ed25519 public key from {}",
+                key_path.display()
+            )
+        })?;
 
         let public_bytes = verifying_key.to_bytes();
         let x = URL_SAFE_NO_PAD.encode(public_bytes);
@@ -112,7 +116,7 @@ fn run_generate(args: GenerateArgs) -> Result<()> {
         });
     }
 
-    let directory = KeyDirectory { 
+    let directory = KeyDirectory {
         keys,
         agent_credential_url: args.credential_url.clone(),
     };
@@ -143,15 +147,18 @@ fn run_generate(args: GenerateArgs) -> Result<()> {
 
     // Sign if requested
     if args.sign {
-        let private_key_path = args.private_key.as_ref().unwrap();
-        let authority = args.authority.as_ref().ok_or_else(|| {
-            anyhow::anyhow!("--authority is required when using --sign")
-        })?;
+        let private_key_path = args
+            .private_key
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("--private-key is required when using --sign"))?;
+        let authority = args
+            .authority
+            .as_ref()
+            .ok_or_else(|| anyhow::anyhow!("--authority is required when using --sign"))?;
 
-        let pem = Zeroizing::new(
-            fs::read_to_string(private_key_path)
-                .with_context(|| format!("failed to read private key {}", private_key_path.display()))?,
-        );
+        let pem = Zeroizing::new(fs::read_to_string(private_key_path).with_context(|| {
+            format!("failed to read private key {}", private_key_path.display())
+        })?);
         let signing_key =
             SigningKey::from_pkcs8_pem(&pem).context("failed to parse Ed25519 private key")?;
         let verifying_key = signing_key.verifying_key();
@@ -200,8 +207,12 @@ fn run_thumbprint(args: ThumbprintArgs) -> Result<()> {
     let pem = fs::read_to_string(&args.public_key)
         .with_context(|| format!("failed to read public key {}", args.public_key.display()))?;
 
-    let verifying_key = VerifyingKey::from_public_key_pem(&pem)
-        .with_context(|| format!("failed to parse Ed25519 public key from {}", args.public_key.display()))?;
+    let verifying_key = VerifyingKey::from_public_key_pem(&pem).with_context(|| {
+        format!(
+            "failed to parse Ed25519 public key from {}",
+            args.public_key.display()
+        )
+    })?;
 
     let thumbprint = compute_jwk_thumbprint(&verifying_key)?;
 
@@ -229,5 +240,3 @@ fn compute_key_thumbprint(x: &str) -> Result<String> {
 
     Ok(URL_SAFE_NO_PAD.encode(hash))
 }
-
-

@@ -91,9 +91,9 @@ pub fn run(args: InitArgs) -> Result<()> {
         deployment_type: args.r#type,
         developer_id,
         force: args.force,
-        interactive: !args.non_interactive,  // Interactive by default
-        validate: !args.no_validate,         // Validate by default
-        credential: args.credential,         // Schema-compliant credential output
+        interactive: !args.non_interactive, // Interactive by default
+        validate: !args.no_validate,        // Validate by default
+        credential: args.credential,        // Schema-compliant credential output
         issuer_did: args.issuer_did,
     };
 

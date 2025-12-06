@@ -63,8 +63,8 @@ pub struct SignArgs {
 
 pub fn run(args: SignArgs) -> Result<()> {
     // Determine if we need interactive mode
-    let needs_interactive =
-        (args.key.is_none() || args.payload.is_none() || args.kid.is_none()) && !args.non_interactive;
+    let needs_interactive = (args.key.is_none() || args.payload.is_none() || args.kid.is_none())
+        && !args.non_interactive;
 
     if needs_interactive {
         run_interactive(args)
@@ -152,7 +152,10 @@ fn run_non_interactive(args: SignArgs) -> Result<()> {
         if credentials.is_empty() {
             bail!("No credential files found. Create one with: beltic init --credential");
         }
-        eprintln!("[info] Using auto-discovered payload: {}", credentials[0].display());
+        eprintln!(
+            "[info] Using auto-discovered payload: {}",
+            credentials[0].display()
+        );
         credentials[0].clone()
     };
 
@@ -239,10 +242,18 @@ fn run_non_interactive(args: SignArgs) -> Result<()> {
 }
 
 fn do_sign(args: &SignArgs, prompts: &CommandPrompts) -> Result<()> {
-    let key = args.key.as_ref().expect("key should be set");
-    let payload_path = args.payload.as_ref().expect("payload should be set");
-    let out = args.out.as_ref().expect("out should be set");
-    let kid = args.kid.as_ref().expect("kid should be set");
+    let key = args.key.as_ref().ok_or_else(|| {
+        anyhow!("private key is required; rerun without --non-interactive to select one")
+    })?;
+    let payload_path = args.payload.as_ref().ok_or_else(|| {
+        anyhow!("payload path is required; rerun without --non-interactive to select one")
+    })?;
+    let out = args.out.as_ref().ok_or_else(|| {
+        anyhow!("output path is required; rerun without --non-interactive to select one")
+    })?;
+    let kid = args.kid.as_ref().ok_or_else(|| {
+        anyhow!("key identifier (kid) is required; rerun without --non-interactive to set one")
+    })?;
 
     let payload_content = fs::read_to_string(payload_path)
         .with_context(|| format!("failed to read payload file {}", payload_path.display()))?;
@@ -257,7 +268,10 @@ fn do_sign(args: &SignArgs, prompts: &CommandPrompts) -> Result<()> {
         })?
     };
 
-    prompts.info(&format!("Detected credential type: {}", kind.display_name()))?;
+    prompts.info(&format!(
+        "Detected credential type: {}",
+        kind.display_name()
+    ))?;
 
     if !args.skip_schema {
         prompts.info("Validating credential schema...")?;
@@ -282,7 +296,11 @@ fn do_sign(args: &SignArgs, prompts: &CommandPrompts) -> Result<()> {
         },
     )?;
 
-    prompts.info(&format!("Signing with {} using key: {}", args.alg, key.display()))?;
+    prompts.info(&format!(
+        "Signing with {} using key: {}",
+        args.alg,
+        key.display()
+    ))?;
 
     let token = sign_jws(
         &claims,

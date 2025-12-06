@@ -5,8 +5,8 @@ use std::path::Path;
 use std::process::Command;
 
 use crate::manifest::schema::{
-    AgentStatus, ArchitectureType, DataCategory, DeploymentContext, DeploymentType,
-    Modality, RepositoryStructure,
+    AgentStatus, ArchitectureType, DataCategory, DeploymentContext, DeploymentType, Modality,
+    RepositoryStructure,
 };
 
 /// Auto-detection results
@@ -156,9 +156,10 @@ fn detect_from_package_json(base_dir: &Path, results: &mut DetectionResults) {
             if results.project_description.is_none() {
                 if let Some(desc) = package_json.get("description").and_then(|d| d.as_str()) {
                     results.project_description = Some(desc.to_string());
-                    results
-                        .detection_sources
-                        .insert("project_description".to_string(), "package.json".to_string());
+                    results.detection_sources.insert(
+                        "project_description".to_string(),
+                        "package.json".to_string(),
+                    );
                 }
             }
 
@@ -214,9 +215,10 @@ fn detect_from_pyproject_toml(base_dir: &Path, results: &mut DetectionResults) {
                 if results.project_description.is_none() {
                     if let Some(desc) = project.get("description").and_then(|d| d.as_str()) {
                         results.project_description = Some(desc.to_string());
-                        results
-                            .detection_sources
-                            .insert("project_description".to_string(), "pyproject.toml".to_string());
+                        results.detection_sources.insert(
+                            "project_description".to_string(),
+                            "pyproject.toml".to_string(),
+                        );
                     }
                 }
 
@@ -227,17 +229,15 @@ fn detect_from_pyproject_toml(base_dir: &Path, results: &mut DetectionResults) {
             }
 
             // Try [tool.poetry] section (Poetry)
-            if let Some(poetry) = pyproject
-                .get("tool")
-                .and_then(|t| t.get("poetry"))
-            {
+            if let Some(poetry) = pyproject.get("tool").and_then(|t| t.get("poetry")) {
                 // Project name
                 if results.project_name.is_none() {
                     if let Some(name) = poetry.get("name").and_then(|n| n.as_str()) {
                         results.project_name = Some(name.to_string());
-                        results
-                            .detection_sources
-                            .insert("project_name".to_string(), "pyproject.toml (poetry)".to_string());
+                        results.detection_sources.insert(
+                            "project_name".to_string(),
+                            "pyproject.toml (poetry)".to_string(),
+                        );
                     }
                 }
 
@@ -245,9 +245,10 @@ fn detect_from_pyproject_toml(base_dir: &Path, results: &mut DetectionResults) {
                 if results.project_version.is_none() {
                     if let Some(version) = poetry.get("version").and_then(|v| v.as_str()) {
                         results.project_version = Some(version.to_string());
-                        results
-                            .detection_sources
-                            .insert("project_version".to_string(), "pyproject.toml (poetry)".to_string());
+                        results.detection_sources.insert(
+                            "project_version".to_string(),
+                            "pyproject.toml (poetry)".to_string(),
+                        );
                     }
                 }
 
@@ -255,9 +256,10 @@ fn detect_from_pyproject_toml(base_dir: &Path, results: &mut DetectionResults) {
                 if results.project_description.is_none() {
                     if let Some(desc) = poetry.get("description").and_then(|d| d.as_str()) {
                         results.project_description = Some(desc.to_string());
-                        results
-                            .detection_sources
-                            .insert("project_description".to_string(), "pyproject.toml (poetry)".to_string());
+                        results.detection_sources.insert(
+                            "project_description".to_string(),
+                            "pyproject.toml (poetry)".to_string(),
+                        );
                     }
                 }
 
@@ -439,34 +441,42 @@ fn detect_from_go_mod(base_dir: &Path, results: &mut DetectionResults) {
 fn detect_ai_deps_from_names(dep_names: &[String], results: &mut DetectionResults) {
     let has_langchain = dep_names.iter().any(|d| d.contains("langchain"));
     let has_crewai = dep_names.iter().any(|d| d.contains("crewai"));
-    let has_autogen = dep_names.iter().any(|d| d.contains("autogen") || d.contains("pyautogen"));
+    let has_autogen = dep_names
+        .iter()
+        .any(|d| d.contains("autogen") || d.contains("pyautogen"));
     let has_openai = dep_names.iter().any(|d| d == "openai");
     let has_anthropic = dep_names.iter().any(|d| d == "anthropic");
-    let has_llama_index = dep_names.iter().any(|d| d.contains("llama-index") || d.contains("llama_index"));
+    let has_llama_index = dep_names
+        .iter()
+        .any(|d| d.contains("llama-index") || d.contains("llama_index"));
     let has_transformers = dep_names.iter().any(|d| d == "transformers");
     let has_agents = dep_names.iter().any(|d| d.contains("agents"));
 
     // Determine architecture type based on frameworks
     if has_crewai || has_autogen {
         results.architecture_type = Some(ArchitectureType::MultiAgent);
-        results
-            .detection_sources
-            .insert("architecture_type".to_string(), "dependencies (multi-agent framework)".to_string());
+        results.detection_sources.insert(
+            "architecture_type".to_string(),
+            "dependencies (multi-agent framework)".to_string(),
+        );
     } else if has_langchain || has_llama_index {
         results.architecture_type = Some(ArchitectureType::Rag);
-        results
-            .detection_sources
-            .insert("architecture_type".to_string(), "dependencies (RAG framework)".to_string());
+        results.detection_sources.insert(
+            "architecture_type".to_string(),
+            "dependencies (RAG framework)".to_string(),
+        );
     } else if has_openai || has_anthropic || has_agents {
         results.architecture_type = Some(ArchitectureType::ToolUsing);
-        results
-            .detection_sources
-            .insert("architecture_type".to_string(), "dependencies (AI SDK)".to_string());
+        results.detection_sources.insert(
+            "architecture_type".to_string(),
+            "dependencies (AI SDK)".to_string(),
+        );
     } else if has_transformers {
         results.architecture_type = Some(ArchitectureType::FineTuned);
-        results
-            .detection_sources
-            .insert("architecture_type".to_string(), "dependencies (transformers)".to_string());
+        results.detection_sources.insert(
+            "architecture_type".to_string(),
+            "dependencies (transformers)".to_string(),
+        );
     }
 }
 
@@ -503,44 +513,50 @@ fn detect_ai_frameworks(base_dir: &Path, results: &mut DetectionResults) {
                 // Check for framework imports
                 if content.contains("from crewai") || content.contains("import crewai") {
                     results.architecture_type = Some(ArchitectureType::MultiAgent);
-                    results
-                        .detection_sources
-                        .insert("architecture_type".to_string(), "code (crewai import)".to_string());
+                    results.detection_sources.insert(
+                        "architecture_type".to_string(),
+                        "code (crewai import)".to_string(),
+                    );
                     return;
                 }
                 if content.contains("from autogen") || content.contains("import autogen") {
                     results.architecture_type = Some(ArchitectureType::MultiAgent);
-                    results
-                        .detection_sources
-                        .insert("architecture_type".to_string(), "code (autogen import)".to_string());
+                    results.detection_sources.insert(
+                        "architecture_type".to_string(),
+                        "code (autogen import)".to_string(),
+                    );
                     return;
                 }
                 if content.contains("from langchain") || content.contains("import langchain") {
                     results.architecture_type = Some(ArchitectureType::Rag);
-                    results
-                        .detection_sources
-                        .insert("architecture_type".to_string(), "code (langchain import)".to_string());
+                    results.detection_sources.insert(
+                        "architecture_type".to_string(),
+                        "code (langchain import)".to_string(),
+                    );
                     return;
                 }
                 if content.contains("from llama_index") || content.contains("import llama_index") {
                     results.architecture_type = Some(ArchitectureType::Rag);
-                    results
-                        .detection_sources
-                        .insert("architecture_type".to_string(), "code (llama_index import)".to_string());
+                    results.detection_sources.insert(
+                        "architecture_type".to_string(),
+                        "code (llama_index import)".to_string(),
+                    );
                     return;
                 }
                 if content.contains("from openai") || content.contains("import openai") {
                     results.architecture_type = Some(ArchitectureType::ToolUsing);
-                    results
-                        .detection_sources
-                        .insert("architecture_type".to_string(), "code (openai import)".to_string());
+                    results.detection_sources.insert(
+                        "architecture_type".to_string(),
+                        "code (openai import)".to_string(),
+                    );
                     // Don't return, keep looking for more specific frameworks
                 }
                 if content.contains("from anthropic") || content.contains("import anthropic") {
                     results.architecture_type = Some(ArchitectureType::ToolUsing);
-                    results
-                        .detection_sources
-                        .insert("architecture_type".to_string(), "code (anthropic import)".to_string());
+                    results.detection_sources.insert(
+                        "architecture_type".to_string(),
+                        "code (anthropic import)".to_string(),
+                    );
                     // Don't return, keep looking for more specific frameworks
                 }
             }
@@ -553,25 +569,28 @@ fn detect_ai_frameworks(base_dir: &Path, results: &mut DetectionResults) {
             if let Ok(content) = fs::read_to_string(&path) {
                 if content.contains("@langchain") || content.contains("langchain") {
                     results.architecture_type = Some(ArchitectureType::Rag);
-                    results
-                        .detection_sources
-                        .insert("architecture_type".to_string(), "code (langchain import)".to_string());
+                    results.detection_sources.insert(
+                        "architecture_type".to_string(),
+                        "code (langchain import)".to_string(),
+                    );
                     return;
                 }
                 if content.contains("@anthropic-ai/sdk") || content.contains("anthropic") {
                     if results.architecture_type.is_none() {
                         results.architecture_type = Some(ArchitectureType::ToolUsing);
-                        results
-                            .detection_sources
-                            .insert("architecture_type".to_string(), "code (anthropic import)".to_string());
+                        results.detection_sources.insert(
+                            "architecture_type".to_string(),
+                            "code (anthropic import)".to_string(),
+                        );
                     }
                 }
                 if content.contains("openai") {
                     if results.architecture_type.is_none() {
                         results.architecture_type = Some(ArchitectureType::ToolUsing);
-                        results
-                            .detection_sources
-                            .insert("architecture_type".to_string(), "code (openai import)".to_string());
+                        results.detection_sources.insert(
+                            "architecture_type".to_string(),
+                            "code (openai import)".to_string(),
+                        );
                     }
                 }
             }
@@ -682,7 +701,13 @@ fn detect_from_git(base_dir: &Path, results: &mut DetectionResults) {
 
 /// Detect from README
 fn detect_from_readme(base_dir: &Path, results: &mut DetectionResults) {
-    let readme_names = ["README.md", "README.MD", "readme.md", "README.txt", "README"];
+    let readme_names = [
+        "README.md",
+        "README.MD",
+        "readme.md",
+        "README.txt",
+        "README",
+    ];
 
     for name in &readme_names {
         let readme_path = base_dir.join(name);
@@ -881,10 +906,14 @@ fn detect_modalities(base_dir: &Path, results: &mut DetectionResults) {
     }
 
     // Look for code files → code modality
-    if glob::glob(&base_dir.join("**/*.{ts,js,py,rs,go,java}").to_string_lossy())
-        .ok()
-        .and_then(|paths| paths.flatten().next())
-        .is_some()
+    if glob::glob(
+        &base_dir
+            .join("**/*.{ts,js,py,rs,go,java}")
+            .to_string_lossy(),
+    )
+    .ok()
+    .and_then(|paths| paths.flatten().next())
+    .is_some()
     {
         if !results.modality_support.contains(&Modality::Code) {
             results.modality_support.push(Modality::Code);
@@ -892,10 +921,14 @@ fn detect_modalities(base_dir: &Path, results: &mut DetectionResults) {
     }
 
     // Look for structured data files
-    if glob::glob(&base_dir.join("**/*.{json,yaml,yml,toml,csv}").to_string_lossy())
-        .ok()
-        .and_then(|paths| paths.flatten().next())
-        .is_some()
+    if glob::glob(
+        &base_dir
+            .join("**/*.{json,yaml,yml,toml,csv}")
+            .to_string_lossy(),
+    )
+    .ok()
+    .and_then(|paths| paths.flatten().next())
+    .is_some()
     {
         if !results.modality_support.contains(&Modality::StructuredData) {
             results.modality_support.push(Modality::StructuredData);

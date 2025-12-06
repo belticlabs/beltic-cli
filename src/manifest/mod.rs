@@ -15,13 +15,13 @@ use uuid::Uuid;
 
 use crate::manifest::config::BelticConfig;
 use crate::manifest::credential::{
-    AgentCredential, ArchitectureType as CredArchType, DataCategory as CredDataCategory,
-    Modality as CredModality, AgentStatus as CredAgentStatus, ComplianceCert,
+    AgentCredential, AgentStatus as CredAgentStatus, ArchitectureType as CredArchType,
+    ComplianceCert, DataCategory as CredDataCategory, Modality as CredModality,
 };
 use crate::manifest::detector::detect_project_info;
 use crate::manifest::fingerprint::{generate_fingerprint, FingerprintOptions};
 use crate::manifest::schema::{
-    AgentManifest, GenerationMetadata, ArchitectureType, DataCategory, Modality, AgentStatus,
+    AgentManifest, AgentStatus, ArchitectureType, DataCategory, GenerationMetadata, Modality,
 };
 
 /// Options for manifest initialization
@@ -52,9 +52,9 @@ impl Default for InitOptions {
             deployment_type: None,
             developer_id: None,
             force: false,
-            interactive: true,  // Default to interactive mode
-            validate: true,     // Default to validating
-            credential: false,  // Default to manifest output
+            interactive: true, // Default to interactive mode
+            validate: true,    // Default to validating
+            credential: false, // Default to manifest output
             issuer_did: None,
         }
     }
@@ -77,10 +77,10 @@ pub fn init_manifest(options: &InitOptions) -> Result<()> {
 
 /// Initialize manifest with interactive prompts
 fn init_manifest_interactive(options: &InitOptions) -> Result<()> {
-    use console::style;
     use crate::manifest::prompts::InteractivePrompts;
     use crate::manifest::templates::ManifestTemplates;
     use crate::manifest::validator::validate_manifest;
+    use console::style;
 
     let base_dir = std::env::current_dir()?;
     let output_path = options
@@ -97,7 +97,10 @@ fn init_manifest_interactive(options: &InitOptions) -> Result<()> {
         );
     }
 
-    println!("{}", style("🚀 Beltic Agent Manifest Generator").bold().cyan());
+    println!(
+        "{}",
+        style("🚀 Beltic Agent Manifest Generator").bold().cyan()
+    );
 
     // Auto-detect project information first
     let detection_results = detect_project_info(&base_dir)?;
@@ -107,9 +110,18 @@ fn init_manifest_interactive(options: &InitOptions) -> Result<()> {
 
     // 1. Agent Identity
     let defaults = (
-        detection_results.project_name.as_deref().unwrap_or("my-agent"),
-        detection_results.project_version.as_deref().unwrap_or("0.1.0"),
-        detection_results.project_description.as_deref().unwrap_or(""),
+        detection_results
+            .project_name
+            .as_deref()
+            .unwrap_or("my-agent"),
+        detection_results
+            .project_version
+            .as_deref()
+            .unwrap_or("0.1.0"),
+        detection_results
+            .project_description
+            .as_deref()
+            .unwrap_or(""),
     );
     let (name, version, description, status) = prompts.prompt_identity(Some(defaults))?;
 
@@ -162,7 +174,8 @@ fn init_manifest_interactive(options: &InitOptions) -> Result<()> {
     manifest.agent_version = version;
     manifest.agent_description = description;
     manifest.current_status = status;
-    manifest.first_release_date = detection_results.first_release_date
+    manifest.first_release_date = detection_results
+        .first_release_date
         .unwrap_or_else(|| chrono::Utc::now().format("%Y-%m-%d").to_string());
 
     // Apply technical profile
@@ -211,7 +224,9 @@ fn init_manifest_interactive(options: &InitOptions) -> Result<()> {
     manifest.developer_credential_verified = false;
 
     // Use cases
-    manifest.approved_use_cases = Some(ManifestTemplates::default_approved_use_cases(&manifest.architecture_type));
+    manifest.approved_use_cases = Some(ManifestTemplates::default_approved_use_cases(
+        &manifest.architecture_type,
+    ));
     manifest.prohibited_use_cases = Some(ManifestTemplates::default_prohibited_use_cases());
 
     // Apply deployment context if detected
@@ -258,9 +273,9 @@ fn init_manifest_interactive(options: &InitOptions) -> Result<()> {
 
 /// Initialize manifest without prompts (non-interactive mode)
 fn init_manifest_noninteractive(options: &InitOptions) -> Result<()> {
+    use crate::manifest::schema::DeploymentType;
     use crate::manifest::templates::generate_complete_defaults;
     use crate::manifest::validator::validate_manifest;
-    use crate::manifest::schema::DeploymentType;
 
     let base_dir = std::env::current_dir()?;
     let output_path = options
@@ -313,13 +328,17 @@ fn init_manifest_noninteractive(options: &InitOptions) -> Result<()> {
     let detection_results = detect_project_info(&base_dir)?;
 
     // Get name and version with defaults (no TODOs)
-    let name = detection_results.project_name.clone()
-        .unwrap_or_else(|| base_dir.file_name()
+    let name = detection_results.project_name.clone().unwrap_or_else(|| {
+        base_dir
+            .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("agent")
-            .to_string());
+            .to_string()
+    });
 
-    let version = detection_results.project_version.clone()
+    let version = detection_results
+        .project_version
+        .clone()
         .unwrap_or_else(|| "0.1.0".to_string());
 
     println!("✓ Using agent name: {}", name);
@@ -331,12 +350,14 @@ fn init_manifest_noninteractive(options: &InitOptions) -> Result<()> {
         Some("plugin") => DeploymentType::Plugin,
         Some("serverless") => DeploymentType::Serverless,
         Some("embedded") => DeploymentType::Embedded,
-        _ => detection_results.deployment_type
+        _ => detection_results
+            .deployment_type
             .unwrap_or(DeploymentType::Standalone),
     };
 
     // Determine architecture type
-    let architecture = detection_results.architecture_type
+    let architecture = detection_results
+        .architecture_type
         .unwrap_or(crate::manifest::schema::ArchitectureType::SingleAgent);
 
     // Generate fingerprint
@@ -356,8 +377,7 @@ fn init_manifest_noninteractive(options: &InitOptions) -> Result<()> {
     let fingerprint_result = generate_fingerprint(&fingerprint_options)?;
     println!(
         "✓ Generated fingerprint ({} files, {})",
-        fingerprint_result.file_count,
-        fingerprint_result.hash
+        fingerprint_result.file_count, fingerprint_result.hash
     );
 
     // Create manifest with complete defaults (no TODOs)
@@ -484,9 +504,7 @@ fn load_or_create_config(base_dir: &Path, options: &InitOptions) -> Result<Belti
 pub fn update_fingerprint(manifest_path: Option<&str>) -> Result<()> {
     let base_dir = std::env::current_dir()?;
     let default_path = base_dir.join("agent-manifest.json");
-    let manifest_path = manifest_path
-        .map(Path::new)
-        .unwrap_or(&default_path);
+    let manifest_path = manifest_path.map(Path::new).unwrap_or(&default_path);
 
     if !manifest_path.exists() {
         anyhow::bail!("Manifest not found at {}", manifest_path.display());
@@ -508,8 +526,8 @@ pub fn update_fingerprint(manifest_path: Option<&str>) -> Result<()> {
     println!("✓ Generating new fingerprint...");
 
     // Try to load config
-    let config = BelticConfig::find_and_load(&base_dir)?
-        .unwrap_or_else(BelticConfig::default_standalone);
+    let config =
+        BelticConfig::find_and_load(&base_dir)?.unwrap_or_else(BelticConfig::default_standalone);
 
     let fingerprint_options =
         FingerprintOptions::from_path_config(&config.agent.paths, base_dir.clone());
@@ -552,9 +570,7 @@ pub fn verify_fingerprint(manifest_path: Option<&str>) -> Result<()> {
 
     let base_dir = std::env::current_dir()?;
     let default_path = base_dir.join("agent-manifest.json");
-    let manifest_path = manifest_path
-        .map(Path::new)
-        .unwrap_or(&default_path);
+    let manifest_path = manifest_path.map(Path::new).unwrap_or(&default_path);
 
     if !manifest_path.exists() {
         anyhow::bail!("Manifest not found at {}", manifest_path.display());
@@ -570,29 +586,41 @@ pub fn verify_fingerprint(manifest_path: Option<&str>) -> Result<()> {
         .and_then(|f| f.as_str())
         .ok_or_else(|| anyhow::anyhow!("No fingerprint found in manifest"))?;
 
-    println!("📋 Stored fingerprint: {}", style(stored_fingerprint).cyan());
+    println!(
+        "📋 Stored fingerprint: {}",
+        style(stored_fingerprint).cyan()
+    );
 
     // Generate new fingerprint
     println!("🔍 Generating current fingerprint...");
 
     // Try to load config
-    let config = BelticConfig::find_and_load(&base_dir)?
-        .unwrap_or_else(BelticConfig::default_standalone);
+    let config =
+        BelticConfig::find_and_load(&base_dir)?.unwrap_or_else(BelticConfig::default_standalone);
 
     let fingerprint_options =
         FingerprintOptions::from_path_config(&config.agent.paths, base_dir.clone());
 
     let fingerprint_result = generate_fingerprint(&fingerprint_options)?;
 
-    println!("📋 Current fingerprint:  {}", style(&fingerprint_result.hash).cyan());
+    println!(
+        "📋 Current fingerprint:  {}",
+        style(&fingerprint_result.hash).cyan()
+    );
     println!("📊 Files processed: {}", fingerprint_result.file_count);
 
     // Compare fingerprints
     if stored_fingerprint == fingerprint_result.hash {
-        println!("\n{}", style("✓ VERIFIED: Fingerprints match!").green().bold());
+        println!(
+            "\n{}",
+            style("✓ VERIFIED: Fingerprints match!").green().bold()
+        );
         println!("  The codebase has not changed since the manifest was created.");
     } else {
-        println!("\n{}", style("✗ MISMATCH: Fingerprints differ!").red().bold());
+        println!(
+            "\n{}",
+            style("✗ MISMATCH: Fingerprints differ!").red().bold()
+        );
         println!("  The codebase has changed since the manifest was created.");
         println!("\n{}", style("Recommendations:").yellow());
         println!("  1. Review what has changed");
@@ -647,13 +675,17 @@ pub fn init_credential(options: &InitOptions) -> Result<()> {
     println!("  Detecting project information...");
     let detection_results = detect_project_info(&base_dir)?;
 
-    let name = detection_results.project_name.clone()
-        .unwrap_or_else(|| base_dir.file_name()
+    let name = detection_results.project_name.clone().unwrap_or_else(|| {
+        base_dir
+            .file_name()
             .and_then(|n| n.to_str())
             .unwrap_or("agent")
-            .to_string());
+            .to_string()
+    });
 
-    let version = detection_results.project_version.clone()
+    let version = detection_results
+        .project_version
+        .clone()
         .unwrap_or_else(|| "0.1.0".to_string());
 
     println!("  Agent name: {}", name);
@@ -676,13 +708,16 @@ pub fn init_credential(options: &InitOptions) -> Result<()> {
     let fingerprint_result = generate_fingerprint(&fingerprint_options)?;
     println!(
         "  Fingerprint: {} ({} files)",
-        fingerprint_result.hash,
-        fingerprint_result.file_count
+        fingerprint_result.hash, fingerprint_result.file_count
     );
 
     // Determine issuer DID
-    let issuer_did = options.issuer_did.clone()
-        .unwrap_or_else(|| format!("did:web:self.{}.local", name.to_lowercase().replace(' ', "-")));
+    let issuer_did = options.issuer_did.clone().unwrap_or_else(|| {
+        format!(
+            "did:web:self.{}.local",
+            name.to_lowercase().replace(' ', "-")
+        )
+    });
 
     // Create credential with defaults
     let mut credential = AgentCredential::new_with_defaults(
@@ -710,7 +745,8 @@ pub fn init_credential(options: &InitOptions) -> Result<()> {
 
     // Convert modalities
     if !detection_results.modality_support.is_empty() {
-        credential.modality_support = detection_results.modality_support
+        credential.modality_support = detection_results
+            .modality_support
             .iter()
             .map(convert_modality)
             .collect();
@@ -718,7 +754,8 @@ pub fn init_credential(options: &InitOptions) -> Result<()> {
 
     // Convert data categories and update compliance certs accordingly
     if !detection_results.data_categories.is_empty() {
-        let converted_categories: Vec<CredDataCategory> = detection_results.data_categories
+        let converted_categories: Vec<CredDataCategory> = detection_results
+            .data_categories
             .iter()
             .map(convert_data_category)
             .collect();
@@ -770,7 +807,10 @@ pub fn init_credential(options: &InitOptions) -> Result<()> {
         println!("1. Obtain developer credential from Beltic or create self-signed");
         println!("2. Run: beltic init --developer-id <credential-id>");
     }
-    println!("3. Sign credential: beltic sign --payload {}", output_path.display());
+    println!(
+        "3. Sign credential: beltic sign --payload {}",
+        output_path.display()
+    );
 
     // Write .beltic.yaml if it doesn't exist
     let beltic_yaml_path = base_dir.join(".beltic.yaml");
@@ -802,7 +842,7 @@ fn convert_modality(modality: &Modality) -> CredModality {
         Modality::Image => CredModality::Image,
         Modality::Audio => CredModality::Audio,
         Modality::Video => CredModality::Video,
-        Modality::Code => CredModality::Text,           // Map Code to Text
+        Modality::Code => CredModality::Text, // Map Code to Text
         Modality::StructuredData => CredModality::Text, // Map StructuredData to Text
     }
 }

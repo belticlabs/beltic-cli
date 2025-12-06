@@ -50,8 +50,7 @@ impl CommandPrompts {
 
     /// Display an info message
     pub fn info(&self, message: &str) -> Result<()> {
-        self.term
-            .write_line(&format!("{}", style(message).dim()))?;
+        self.term.write_line(&format!("{}", style(message).dim()))?;
         Ok(())
     }
 
@@ -130,10 +129,7 @@ impl CommandPrompts {
         paths: &[PathBuf],
         allow_manual: bool,
     ) -> Result<PathBuf> {
-        let mut options: Vec<String> = paths
-            .iter()
-            .map(|p| p.display().to_string())
-            .collect();
+        let mut options: Vec<String> = paths.iter().map(|p| p.display().to_string()).collect();
 
         if allow_manual {
             options.push("Enter path manually...".to_string());

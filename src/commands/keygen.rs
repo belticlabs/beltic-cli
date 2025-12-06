@@ -113,7 +113,10 @@ fn run_interactive(args: KeygenArgs) -> Result<()> {
 
     // 8. Print success message
     println!();
-    println!("{}", style("Key pair generated successfully!").green().bold());
+    println!(
+        "{}",
+        style("Key pair generated successfully!").green().bold()
+    );
     println!();
     println!("  {} {}", style("Algorithm:").dim(), alg);
     println!(
@@ -121,11 +124,7 @@ fn run_interactive(args: KeygenArgs) -> Result<()> {
         style("Private key:").dim(),
         private_path.display()
     );
-    println!(
-        "  {} {}",
-        style("Public key:").dim(),
-        public_path.display()
-    );
+    println!("  {} {}", style("Public key:").dim(), public_path.display());
 
     if gitignore_updated {
         println!();

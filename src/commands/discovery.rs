@@ -24,11 +24,7 @@ pub fn ensure_beltic_dir() -> Result<PathBuf> {
 /// Find private keys in standard locations
 /// Searches: ./.beltic/, ./keys/, ./
 pub fn find_private_keys() -> Vec<PathBuf> {
-    let search_dirs = vec![
-        beltic_dir(),
-        PathBuf::from("keys"),
-        PathBuf::from("."),
-    ];
+    let search_dirs = vec![beltic_dir(), PathBuf::from("keys"), PathBuf::from(".")];
 
     find_keys_in_dirs(&search_dirs, true)
 }
@@ -36,11 +32,7 @@ pub fn find_private_keys() -> Vec<PathBuf> {
 /// Find public keys in standard locations
 /// Searches: ./.beltic/, ./keys/, ./
 pub fn find_public_keys() -> Vec<PathBuf> {
-    let search_dirs = vec![
-        beltic_dir(),
-        PathBuf::from("keys"),
-        PathBuf::from("."),
-    ];
+    let search_dirs = vec![beltic_dir(), PathBuf::from("keys"), PathBuf::from(".")];
 
     find_keys_in_dirs(&search_dirs, false)
 }

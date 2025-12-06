@@ -204,8 +204,9 @@ pub fn refresh_schema(schema_type: SchemaType) -> Result<Value> {
 pub fn clear_cache() -> Result<()> {
     let cache_dir = cache_dir().context("could not determine cache directory")?;
     if cache_dir.exists() {
-        fs::remove_dir_all(&cache_dir)
-            .with_context(|| format!("failed to remove cache directory: {}", cache_dir.display()))?;
+        fs::remove_dir_all(&cache_dir).with_context(|| {
+            format!("failed to remove cache directory: {}", cache_dir.display())
+        })?;
     }
     Ok(())
 }

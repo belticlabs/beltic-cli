@@ -96,7 +96,12 @@ impl InteractivePrompts {
             .default(1) // Default to Beta
             .interact()?;
 
-        Ok((name, version, description, status_options[status_idx].1.clone()))
+        Ok((
+            name,
+            version,
+            description,
+            status_options[status_idx].1.clone(),
+        ))
     }
 
     /// Prompt for technical profile
@@ -178,10 +183,8 @@ impl InteractivePrompts {
             .default("en".to_string())
             .interact_text()?;
 
-        let language_capabilities: Vec<String> = languages
-            .split(',')
-            .map(|s| s.trim().to_string())
-            .collect();
+        let language_capabilities: Vec<String> =
+            languages.split(',').map(|s| s.trim().to_string()).collect();
 
         Ok(TechnicalProfile {
             primary_model_provider: provider,
@@ -360,8 +363,9 @@ impl InteractivePrompts {
 
         let mut selected_categories = vec![];
 
-        self.term
-            .write_line("Select all data categories processed (space to toggle, enter to confirm):")?;
+        self.term.write_line(
+            "Select all data categories processed (space to toggle, enter to confirm):",
+        )?;
 
         for (name, category, _) in &data_categories {
             if Confirm::with_theme(&self.theme)
@@ -414,7 +418,12 @@ impl InteractivePrompts {
 
         let training_idx = Select::with_theme(&self.theme)
             .with_prompt("Training data usage")
-            .items(&training_usage_options.iter().map(|t| t.0).collect::<Vec<_>>())
+            .items(
+                &training_usage_options
+                    .iter()
+                    .map(|t| t.0)
+                    .collect::<Vec<_>>(),
+            )
             .default(0) // Default to Never
             .interact()?;
 
@@ -501,15 +510,32 @@ impl InteractivePrompts {
 
         let update_idx = Select::with_theme(&self.theme)
             .with_prompt("Update cadence")
-            .items(&update_cadence_options.iter().map(|u| u.0).collect::<Vec<_>>())
+            .items(
+                &update_cadence_options
+                    .iter()
+                    .map(|u| u.0)
+                    .collect::<Vec<_>>(),
+            )
             .default(5) // Default to As Needed
             .interact()?;
 
         let oversight_options = vec![
-            ("Autonomous (Low Risk)", HumanOversightMode::AutonomousLowRisk),
-            ("Human Review Pre-Action", HumanOversightMode::HumanReviewPreAction),
-            ("Human Review Post-Action", HumanOversightMode::HumanReviewPostAction),
-            ("Human Initiated Only", HumanOversightMode::HumanInitiatedOnly),
+            (
+                "Autonomous (Low Risk)",
+                HumanOversightMode::AutonomousLowRisk,
+            ),
+            (
+                "Human Review Pre-Action",
+                HumanOversightMode::HumanReviewPreAction,
+            ),
+            (
+                "Human Review Post-Action",
+                HumanOversightMode::HumanReviewPostAction,
+            ),
+            (
+                "Human Initiated Only",
+                HumanOversightMode::HumanInitiatedOnly,
+            ),
             ("Custom Handover", HumanOversightMode::CustomHandover),
         ];
 
@@ -559,7 +585,13 @@ impl InteractivePrompts {
 
             Ok(Some(Uuid::parse_str(&id_str)?))
         } else {
-            self.term.write_line(&style("ℹ You'll need to obtain a developer credential ID from the Beltic platform").yellow().to_string())?;
+            self.term.write_line(
+                &style(
+                    "ℹ You'll need to obtain a developer credential ID from the Beltic platform",
+                )
+                .yellow()
+                .to_string(),
+            )?;
             Ok(None)
         }
     }
@@ -569,8 +601,10 @@ impl InteractivePrompts {
         self.section_header("📊", "Validation Results")?;
 
         if missing_count == 0 {
-            self.term
-                .write_line(&format!("{} All required fields present", style("✅").green()))?;
+            self.term.write_line(&format!(
+                "{} All required fields present",
+                style("✅").green()
+            ))?;
             self.term
                 .write_line(&format!("{} Schema validation passed", style("✅").green()))?;
         } else {

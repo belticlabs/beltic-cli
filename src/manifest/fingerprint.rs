@@ -11,8 +11,7 @@ use std::path::{Path, PathBuf};
 
 use crate::manifest::config::PathConfig;
 use crate::manifest::schema::{
-    ExternalDep, FingerprintMetadata, FingerprintScope, InternalDep,
-    PathConfiguration,
+    ExternalDep, FingerprintMetadata, FingerprintScope, InternalDep, PathConfiguration,
 };
 
 /// Result of fingerprinting operation
@@ -146,8 +145,8 @@ fn collect_files(options: &FingerprintOptions) -> Result<Vec<PathBuf>> {
     let mut seen = std::collections::HashSet::new();
 
     // Build exclude GlobSet once for efficiency
-    let exclude_set = build_globset(&options.exclude_patterns)
-        .context("Failed to build exclude patterns")?;
+    let exclude_set =
+        build_globset(&options.exclude_patterns).context("Failed to build exclude patterns")?;
 
     // Process each include pattern
     for pattern in &options.include_patterns {
@@ -156,9 +155,7 @@ fn collect_files(options: &FingerprintOptions) -> Result<Vec<PathBuf>> {
 
         // Use glob for pattern matching
         if pattern.contains('*') || pattern.contains('?') || pattern.contains('[') {
-            for entry in glob(&pattern_str)
-                .context(format!("Invalid glob pattern: {}", pattern))?
-            {
+            for entry in glob(&pattern_str).context(format!("Invalid glob pattern: {}", pattern))? {
                 if let Ok(path) = entry {
                     if should_include_file(&path, &options.root_path, &exclude_set)? {
                         if seen.insert(path.clone()) {
@@ -199,7 +196,11 @@ fn collect_files(options: &FingerprintOptions) -> Result<Vec<PathBuf>> {
                         if let Ok(entry) = entry {
                             let entry_path = entry.path().to_path_buf();
                             if entry_path.is_file() {
-                                if should_include_file(&entry_path, &options.root_path, &exclude_set)? {
+                                if should_include_file(
+                                    &entry_path,
+                                    &options.root_path,
+                                    &exclude_set,
+                                )? {
                                     if seen.insert(entry_path.clone()) {
                                         files.push(entry_path);
                                     }
@@ -224,22 +225,17 @@ fn build_globset(patterns: &[String]) -> Result<globset::GlobSet> {
 
     for pattern in patterns {
         // Create glob that properly handles ** patterns
-        let glob = Glob::new(pattern)
-            .context(format!("Invalid glob pattern: {}", pattern))?;
+        let glob = Glob::new(pattern).context(format!("Invalid glob pattern: {}", pattern))?;
         builder.add(glob);
     }
 
-    builder.build()
-        .context("Failed to build GlobSet")
+    builder.build().context("Failed to build GlobSet")
 }
 
 /// Check if a file should be included based on exclude patterns
 fn should_include_file(path: &Path, root: &Path, exclude_set: &globset::GlobSet) -> Result<bool> {
     // Get relative path from root
-    let relative_path = path
-        .strip_prefix(root)
-        .unwrap_or(path)
-        .to_string_lossy();
+    let relative_path = path.strip_prefix(root).unwrap_or(path).to_string_lossy();
 
     // Normalize to forward slashes for consistent matching across platforms
     let normalized_path = relative_path.replace('\\', "/");
@@ -254,8 +250,8 @@ fn should_include_file(path: &Path, root: &Path, exclude_set: &globset::GlobSet)
 
 /// Hash a single file
 fn hash_file(path: &Path) -> Result<String> {
-    let mut file = fs::File::open(path)
-        .context(format!("Failed to open file: {}", path.display()))?;
+    let mut file =
+        fs::File::open(path).context(format!("Failed to open file: {}", path.display()))?;
 
     let mut hasher = Sha256::new();
     let mut buffer = [0; 8192];
@@ -425,7 +421,8 @@ mod tests {
         assert_eq!(result.file_count, 1);
 
         // Verify the included file is main.rs
-        let included_files: Vec<String> = result.files_hashed
+        let included_files: Vec<String> = result
+            .files_hashed
             .iter()
             .map(|p| p.file_name().unwrap().to_str().unwrap().to_string())
             .collect();
@@ -453,7 +450,8 @@ mod tests {
         // Should exclude test.log
         assert_eq!(result.file_count, 2);
 
-        let included_files: Vec<String> = result.files_hashed
+        let included_files: Vec<String> = result
+            .files_hashed
             .iter()
             .map(|p| p.file_name().unwrap().to_str().unwrap().to_string())
             .collect();
@@ -592,7 +590,8 @@ mod tests {
         // Should only match .rs files
         assert_eq!(result.file_count, 1);
 
-        let included_files: Vec<String> = result.files_hashed
+        let included_files: Vec<String> = result
+            .files_hashed
             .iter()
             .map(|p| p.file_name().unwrap().to_str().unwrap().to_string())
             .collect();

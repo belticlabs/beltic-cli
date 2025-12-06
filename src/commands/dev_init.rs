@@ -6,7 +6,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
 
-use anyhow::{Context, Result};
+use anyhow::{anyhow, Context, Result};
 use chrono::{Duration, Utc};
 use clap::Args;
 use console::style;
@@ -29,7 +29,10 @@ fn detect_git_defaults() -> GitDefaults {
     let mut defaults = GitDefaults::default();
 
     // Get user.name from git config
-    if let Ok(output) = Command::new("git").args(["config", "--get", "user.name"]).output() {
+    if let Ok(output) = Command::new("git")
+        .args(["config", "--get", "user.name"])
+        .output()
+    {
         if output.status.success() {
             let name = String::from_utf8_lossy(&output.stdout).trim().to_string();
             if !name.is_empty() {
@@ -39,7 +42,10 @@ fn detect_git_defaults() -> GitDefaults {
     }
 
     // Get user.email from git config
-    if let Ok(output) = Command::new("git").args(["config", "--get", "user.email"]).output() {
+    if let Ok(output) = Command::new("git")
+        .args(["config", "--get", "user.email"])
+        .output()
+    {
         if output.status.success() {
             let email = String::from_utf8_lossy(&output.stdout).trim().to_string();
             if !email.is_empty() {
@@ -48,7 +54,16 @@ fn detect_git_defaults() -> GitDefaults {
                 if defaults.website.is_none() {
                     if let Some(domain) = email.split('@').nth(1) {
                         // Skip common email providers
-                        if !["gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "icloud.com", "protonmail.com"].contains(&domain) {
+                        if ![
+                            "gmail.com",
+                            "yahoo.com",
+                            "hotmail.com",
+                            "outlook.com",
+                            "icloud.com",
+                            "protonmail.com",
+                        ]
+                        .contains(&domain)
+                        {
                             defaults.website = Some(format!("https://{}", domain));
                         }
                     }
@@ -59,7 +74,10 @@ fn detect_git_defaults() -> GitDefaults {
 
     // Try to get website from remote origin
     if defaults.website.is_none() {
-        if let Ok(output) = Command::new("git").args(["remote", "get-url", "origin"]).output() {
+        if let Ok(output) = Command::new("git")
+            .args(["remote", "get-url", "origin"])
+            .output()
+        {
             if output.status.success() {
                 let remote = String::from_utf8_lossy(&output.stdout).trim().to_string();
                 // Parse GitHub/GitLab URLs
@@ -77,14 +95,20 @@ fn detect_git_defaults() -> GitDefaults {
 fn parse_git_remote_to_website(remote: &str) -> Option<String> {
     // Handle SSH URLs: git@github.com:user/repo.git
     if remote.starts_with("git@github.com:") {
-        let path = remote.strip_prefix("git@github.com:")?.strip_suffix(".git").unwrap_or(remote.strip_prefix("git@github.com:")?);
+        let path = remote
+            .strip_prefix("git@github.com:")?
+            .strip_suffix(".git")
+            .unwrap_or(remote.strip_prefix("git@github.com:")?);
         let user = path.split('/').next()?;
         return Some(format!("https://github.com/{}", user));
     }
 
     // Handle HTTPS URLs: https://github.com/user/repo.git
     if remote.starts_with("https://github.com/") {
-        let path = remote.strip_prefix("https://github.com/")?.strip_suffix(".git").unwrap_or(remote.strip_prefix("https://github.com/")?);
+        let path = remote
+            .strip_prefix("https://github.com/")?
+            .strip_suffix(".git")
+            .unwrap_or(remote.strip_prefix("https://github.com/")?);
         let user = path.split('/').next()?;
         return Some(format!("https://github.com/{}", user));
     }
@@ -92,12 +116,18 @@ fn parse_git_remote_to_website(remote: &str) -> Option<String> {
     // Handle GitLab
     if remote.contains("gitlab.com") {
         if remote.starts_with("git@gitlab.com:") {
-            let path = remote.strip_prefix("git@gitlab.com:")?.strip_suffix(".git").unwrap_or(remote.strip_prefix("git@gitlab.com:")?);
+            let path = remote
+                .strip_prefix("git@gitlab.com:")?
+                .strip_suffix(".git")
+                .unwrap_or(remote.strip_prefix("git@gitlab.com:")?);
             let user = path.split('/').next()?;
             return Some(format!("https://gitlab.com/{}", user));
         }
         if remote.starts_with("https://gitlab.com/") {
-            let path = remote.strip_prefix("https://gitlab.com/")?.strip_suffix(".git").unwrap_or(remote.strip_prefix("https://gitlab.com/")?);
+            let path = remote
+                .strip_prefix("https://gitlab.com/")?
+                .strip_suffix(".git")
+                .unwrap_or(remote.strip_prefix("https://gitlab.com/")?);
             let user = path.split('/').next()?;
             return Some(format!("https://gitlab.com/{}", user));
         }
@@ -110,7 +140,10 @@ fn parse_git_remote_to_website(remote: &str) -> Option<String> {
 const ENTITY_TYPES: &[(&str, &str)] = &[
     ("individual", "Individual developer"),
     ("corporation", "Corporation"),
-    ("limited_liability_company", "Limited Liability Company (LLC)"),
+    (
+        "limited_liability_company",
+        "Limited Liability Company (LLC)",
+    ),
     ("sole_proprietorship", "Sole Proprietorship"),
     ("partnership", "Partnership"),
     ("nonprofit", "Nonprofit Organization"),
@@ -227,10 +260,7 @@ fn run_interactive(mut args: DevInitArgs) -> Result<()> {
 
     // 5. Email
     if args.email.is_none() {
-        args.email = Some(prompts.prompt_string(
-            "Business email",
-            git_defaults.email.as_deref(),
-        )?);
+        args.email = Some(prompts.prompt_string("Business email", git_defaults.email.as_deref())?);
     }
 
     // 6. Public key (optional)
@@ -238,7 +268,8 @@ fn run_interactive(mut args: DevInitArgs) -> Result<()> {
         let public_keys = find_public_keys();
         if !public_keys.is_empty() {
             if prompts.prompt_confirm("Embed a public key in the credential?", true)? {
-                args.public_key = Some(prompts.prompt_select_path("Select public key", &public_keys, true)?);
+                args.public_key =
+                    Some(prompts.prompt_select_path("Select public key", &public_keys, true)?);
             }
         }
     }
@@ -252,7 +283,9 @@ fn run_interactive(mut args: DevInitArgs) -> Result<()> {
     }
 
     // Generate and save
-    let output_path = args.output.as_ref().unwrap();
+    let output_path = args.output.as_ref().ok_or_else(|| {
+        anyhow!("output path is required; rerun without --non-interactive to provide one")
+    })?;
 
     // Check for existing file
     if output_path.exists() && !args.force {
@@ -269,7 +302,10 @@ fn run_interactive(mut args: DevInitArgs) -> Result<()> {
     let json_str = serde_json::to_string_pretty(&credential)?;
     fs::write(output_path, &json_str)?;
 
-    prompts.success(&format!("Developer credential saved to {}", output_path.display()))?;
+    prompts.success(&format!(
+        "Developer credential saved to {}",
+        output_path.display()
+    ))?;
     prompts.info("")?;
     prompts.info(&format!(
         "Credential ID: {}",
@@ -286,7 +322,8 @@ fn run_interactive(mut args: DevInitArgs) -> Result<()> {
         "  2. Sign the credential: beltic sign --payload {}",
         output_path.display()
     ))?;
-    prompts.info("  3. Use the credential ID in agent manifests: beltic init --developer-id <id>")?;
+    prompts
+        .info("  3. Use the credential ID in agent manifests: beltic init --developer-id <id>")?;
 
     Ok(())
 }
@@ -327,7 +364,10 @@ fn run_non_interactive(mut args: DevInitArgs) -> Result<()> {
         anyhow::bail!("--website is required (could not derive from git remote)");
     }
 
-    let output_path = args.output.clone().unwrap_or_else(|| PathBuf::from("developer-credential.json"));
+    let output_path = args
+        .output
+        .clone()
+        .unwrap_or_else(|| PathBuf::from("developer-credential.json"));
 
     // Check for existing file
     if output_path.exists() && !args.force {
@@ -342,7 +382,10 @@ fn run_non_interactive(mut args: DevInitArgs) -> Result<()> {
     fs::write(&output_path, &json_str)?;
 
     println!("Developer credential saved to {}", output_path.display());
-    println!("Credential ID: {}", credential["credentialId"].as_str().unwrap_or(""));
+    println!(
+        "Credential ID: {}",
+        credential["credentialId"].as_str().unwrap_or("")
+    );
 
     Ok(())
 }
@@ -377,7 +420,7 @@ fn generate_developer_credential(args: &DevInitArgs) -> Result<Value> {
     let public_key = if let Some(key_path) = &args.public_key {
         let pem_content = fs::read_to_string(key_path)
             .with_context(|| format!("Failed to read public key: {}", key_path.display()))?;
-        
+
         // Detect key type from PEM
         let key_type = if pem_content.contains("ED25519") {
             "Ed25519VerificationKey2020"
@@ -452,4 +495,3 @@ fn generate_developer_credential(args: &DevInitArgs) -> Result<Value> {
 
     Ok(credential)
 }
-

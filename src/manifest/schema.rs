@@ -143,7 +143,7 @@ pub struct ExternalDep {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct DataLocationProfile {
-    pub storage_regions: Vec<String>,    // ISO 3166-1 alpha-2 codes
+    pub storage_regions: Vec<String>, // ISO 3166-1 alpha-2 codes
     pub processing_regions: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub backup_regions: Option<Vec<String>>,
@@ -369,7 +369,8 @@ impl AgentManifest {
             agent_id: Uuid::new_v4(),
             agent_name: "TODO: Agent name".to_string(),
             agent_version: "0.1.0".to_string(),
-            agent_description: "TODO: Describe your agent's purpose and capabilities (50-1000 chars)".to_string(),
+            agent_description:
+                "TODO: Describe your agent's purpose and capabilities (50-1000 chars)".to_string(),
             first_release_date: chrono::Utc::now().format("%Y-%m-%d").to_string(),
             current_status: AgentStatus::Alpha,
             developer_credential_id: Uuid::nil(), // Placeholder, needs to be obtained from Beltic
@@ -404,8 +405,10 @@ impl AgentManifest {
             deprecation_policy: "TODO: Describe notice periods and migration support".to_string(),
             update_cadence: UpdateCadence::AsNeeded,
             human_oversight_mode: HumanOversightMode::AutonomousLowRisk,
-            fail_safe_behavior: "TODO: Describe what triggers fail-safe, actions taken, and alerting".to_string(),
-            monitoring_coverage: "TODO: Describe telemetry, review frequency, and alerts".to_string(),
+            fail_safe_behavior:
+                "TODO: Describe what triggers fail-safe, actions taken, and alerting".to_string(),
+            monitoring_coverage: "TODO: Describe telemetry, review frequency, and alerts"
+                .to_string(),
             approved_use_cases: None,
             prohibited_use_cases: None,
             age_restrictions: AgeRestriction::ThirteenPlus,

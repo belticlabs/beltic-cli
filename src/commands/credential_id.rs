@@ -40,8 +40,7 @@ fn is_jwt(content: &str) -> bool {
 }
 
 fn extract_from_json(content: &str) -> Result<String> {
-    let json: Value = serde_json::from_str(content)
-        .context("Invalid JSON")?;
+    let json: Value = serde_json::from_str(content).context("Invalid JSON")?;
 
     // Try credentialId first (agent credentials)
     if let Some(id) = json.get("credentialId").and_then(|v| v.as_str()) {
@@ -69,11 +68,10 @@ fn extract_from_jwt(content: &str) -> Result<String> {
     let payload_b64 = parts[1];
 
     // Handle URL-safe base64
-    let payload_bytes = base64_url_decode(payload_b64)
-        .context("Failed to decode JWT payload")?;
+    let payload_bytes = base64_url_decode(payload_b64).context("Failed to decode JWT payload")?;
 
-    let payload: Value = serde_json::from_slice(&payload_bytes)
-        .context("Failed to parse JWT payload")?;
+    let payload: Value =
+        serde_json::from_slice(&payload_bytes).context("Failed to parse JWT payload")?;
 
     // Try jti claim (standard JWT claim for credential ID)
     if let Some(jti) = payload.get("jti").and_then(|v| v.as_str()) {
@@ -100,7 +98,8 @@ fn base64_url_decode(input: &str) -> Result<Vec<u8>> {
         _ => input.to_string(),
     };
 
-    URL_SAFE_NO_PAD.decode(padded.trim_end_matches('='))
+    URL_SAFE_NO_PAD
+        .decode(padded.trim_end_matches('='))
         .or_else(|_| {
             // Try standard base64 as fallback
             use base64::engine::general_purpose::STANDARD;

@@ -248,13 +248,16 @@ agent:
     host_application: "main-platform"
     runtime: "node:18-alpine"
     location: "agents/customer-service"
-"#.to_string()
+"#
+        .to_string()
     }
 }
 
 /// Resolve paths based on config
 pub fn resolve_paths(config: &PathConfig, base_dir: &Path) -> (Vec<String>, Vec<String>) {
-    let includes = config.include.iter()
+    let includes = config
+        .include
+        .iter()
         .map(|p| base_dir.join(p).to_string_lossy().to_string())
         .collect();
 
