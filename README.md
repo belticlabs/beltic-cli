@@ -14,6 +14,7 @@ Beltic CLI enables developers to create verifiable credentials for AI agents wit
 - **JWS Token Signing** - Schema-aware signing for Agent/Developer Credential v1 with `vc` claim, `kid` header, and Beltic media types
 - **Signature Verification** - Verify signatures plus issuer/audience/time claims and validate payloads against the official JSON Schemas
 - **HTTP Message Signatures** - Sign HTTP requests per RFC 9421 for Web Bot Auth compatibility
+- **Sandbox Compliance Testing** - Run agents in a sandbox with manifest-derived policy enforcement and JSON reports
 - **Key Directory Management** - Generate and serve key directories for HTTP Message Signatures
 - **Flexible Configuration** - YAML-based configuration supporting multiple deployment types (standalone, monorepo, embedded, plugin, serverless)
 - **Interactive Mode** - Developer-friendly prompts with auto-discovery of keys and credentials
@@ -80,6 +81,9 @@ beltic sign
 
 # 6. Verify the signature (interactive - auto-discovers keys and tokens)
 beltic verify
+
+# 7. Run sandbox for a compliance smoke test
+beltic sandbox --manifest agent-manifest.json --command "npm start"
 ```
 
 The CLI uses smart defaults and interactive mode by default. Keys are automatically saved to `.beltic/` with timestamp-based names (e.g., `eddsa-2024-11-26-private.pem`), and private keys are automatically added to `.gitignore`.

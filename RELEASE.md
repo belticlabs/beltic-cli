@@ -17,3 +17,10 @@ Lightweight checklist for publishing a Beltic CLI release.
 - Create the GitHub release (after CI artifacts are ready) with notes and checksums if applicable, e.g.:
   - `gh release create vX.Y.Z --generate-notes` or publish via the GitHub UI.
 - Verify `install.sh` resolves the new release asset and that download/install succeeds end-to-end.
+
+## Release notes (v0.1.2)
+- New `sandbox` command for pre-deployment runs with manifest-derived policy enforcement and JSON reports.
+- Auto-discovery defaults for signing and verification flows to reduce required flags.
+- Schema and credential helpers: `schema` cache management and `credential-id` extraction for JWT/JSON payloads.
+- Framework detection improvements for Python/Go projects to pre-fill manifest metadata.
+- Documentation cleanup: new contributor/release guides and removal of outdated SDK doc.
