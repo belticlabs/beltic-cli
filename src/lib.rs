@@ -1,4 +1,5 @@
 pub mod commands;
+pub mod config;
 pub mod credential;
 pub mod crypto;
 pub mod manifest;

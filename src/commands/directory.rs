@@ -42,6 +42,10 @@ pub struct GenerateArgs {
     #[arg(long)]
     pub credential_url: Option<String>,
 
+    /// Agent metadata JSON (e.g., '{"kybTierRequired":"tier_0","overallSafetyRating":"low_risk","agentName":"my-agent"}')
+    #[arg(long)]
+    pub agent_metadata: Option<String>,
+
     /// Also output with signature headers (requires private key)
     #[arg(long)]
     pub sign: bool,
@@ -68,6 +72,8 @@ pub struct KeyDirectory {
     keys: Vec<JwkKey>,
     #[serde(skip_serializing_if = "Option::is_none")]
     agent_credential_url: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    agent_metadata: Option<serde_json::Value>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -116,9 +122,18 @@ fn run_generate(args: GenerateArgs) -> Result<()> {
         });
     }
 
+    // Parse agent metadata if provided
+    let agent_metadata: Option<serde_json::Value> = args
+        .agent_metadata
+        .as_ref()
+        .map(|m| serde_json::from_str(m))
+        .transpose()
+        .context("failed to parse --agent-metadata as JSON")?;
+
     let directory = KeyDirectory {
         keys,
         agent_credential_url: args.credential_url.clone(),
+        agent_metadata,
     };
     let directory_json = serde_json::to_string_pretty(&directory)?;
 
@@ -143,6 +158,11 @@ fn run_generate(args: GenerateArgs) -> Result<()> {
     // Output credential URL if provided
     if let Some(ref cred_url) = args.credential_url {
         println!("  Credential URL: {}", cred_url);
+    }
+
+    // Output agent metadata if provided
+    if let Some(ref metadata) = directory.agent_metadata {
+        println!("  Agent Metadata: {}", serde_json::to_string(metadata)?);
     }
 
     // Sign if requested
