@@ -125,9 +125,8 @@ impl SandboxReport {
         }
 
         if high > 0 {
-            recommendations.push(
-                "Review and fix all high-severity violations before deployment.".to_string(),
-            );
+            recommendations
+                .push("Review and fix all high-severity violations before deployment.".to_string());
         }
 
         if medium > 0 {
@@ -139,7 +138,8 @@ impl SandboxReport {
 
         if violations.is_empty() {
             recommendations.push(
-                "No violations detected. Agent appears to comply with declared policies.".to_string(),
+                "No violations detected. Agent appears to comply with declared policies."
+                    .to_string(),
             );
             recommendations.push(
                 "Consider running additional test scenarios to validate behavior.".to_string(),
@@ -218,7 +218,13 @@ impl SandboxReport {
         println!("  Violations: {}", self.summary.total_violations);
         println!("  Observations: {}", self.summary.total_observations);
         println!("  Tools declared: {}", self.policy.tools.len());
-        println!("  Allowed domains: {}", self.policy.network.allowed_domains.len());
-        println!("  Prohibited domains: {}", self.policy.network.prohibited_domains.len());
+        println!(
+            "  Allowed domains: {}",
+            self.policy.network.allowed_domains.len()
+        );
+        println!(
+            "  Prohibited domains: {}",
+            self.policy.network.prohibited_domains.len()
+        );
     }
 }

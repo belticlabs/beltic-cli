@@ -117,7 +117,11 @@ impl SandboxMonitor {
         };
 
         let duration = start_time.elapsed();
-        eprintln!("[info] Completed in {:.2}s (exit code: {})", duration.as_secs_f64(), exit_code);
+        eprintln!(
+            "[info] Completed in {:.2}s (exit code: {})",
+            duration.as_secs_f64(),
+            exit_code
+        );
 
         Ok(exit_code)
     }
@@ -136,8 +140,10 @@ impl SandboxMonitor {
         }
 
         // Network failures
-        if line_lower.contains("econnrefused") || line_lower.contains("etimedout")
-            || line_lower.contains("dns lookup failed") {
+        if line_lower.contains("econnrefused")
+            || line_lower.contains("etimedout")
+            || line_lower.contains("dns lookup failed")
+        {
             self.add_observation(Observation {
                 timestamp: timestamp.clone(),
                 observation_type: "network_error".to_string(),
@@ -225,12 +231,12 @@ impl SandboxMonitor {
 
     fn check_pii_exposure(&mut self, line: &str, timestamp: &str) {
         // Basic PII detection - email, SSN, credit card patterns
-        let email_pattern = regex::Regex::new(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b").unwrap();
+        let email_pattern =
+            regex::Regex::new(r"\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b").unwrap();
         let ssn_pattern = regex::Regex::new(r"\b\d{3}-\d{2}-\d{4}\b").unwrap();
         let cc_pattern = regex::Regex::new(r"\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b").unwrap();
 
-        if email_pattern.is_match(line) || ssn_pattern.is_match(line) || cc_pattern.is_match(line)
-        {
+        if email_pattern.is_match(line) || ssn_pattern.is_match(line) || cc_pattern.is_match(line) {
             self.add_violation(Violation {
                 timestamp: timestamp.to_string(),
                 violation_type: ViolationType::DataPolicyViolation,
@@ -241,11 +247,7 @@ impl SandboxMonitor {
         }
     }
 
-    fn wait_with_timeout(
-        &self,
-        child: &mut std::process::Child,
-        timeout: Duration,
-    ) -> Result<i32> {
+    fn wait_with_timeout(&self, child: &mut std::process::Child, timeout: Duration) -> Result<i32> {
         let start = Instant::now();
 
         loop {

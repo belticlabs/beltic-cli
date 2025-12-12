@@ -39,11 +39,16 @@ pub fn run(args: SandboxArgs) -> Result<()> {
     // Extract policy from manifest
     let policy = extract_policy(&manifest)?;
 
-    eprintln!("[info] Testing agent: {} v{}", manifest.agent_name, manifest.agent_version);
-    eprintln!("[info] Policy: {} tools, {} file paths, {} prohibited domains",
-              policy.tools.len(),
-              policy.filesystem.allowed_read_paths.len(),
-              policy.network.prohibited_domains.len());
+    eprintln!(
+        "[info] Testing agent: {} v{}",
+        manifest.agent_name, manifest.agent_version
+    );
+    eprintln!(
+        "[info] Policy: {} tools, {} file paths, {} prohibited domains",
+        policy.tools.len(),
+        policy.filesystem.allowed_read_paths.len(),
+        policy.network.prohibited_domains.len()
+    );
 
     if args.show_policy {
         print_detailed_policy(&policy);
@@ -64,7 +69,12 @@ pub fn run(args: SandboxArgs) -> Result<()> {
     println!("\nWrote sandbox report to {}", args.output.display());
 
     if report.summary.compliant {
-        println!("{}", style("Agent is compliant with declared policies").green().bold());
+        println!(
+            "{}",
+            style("Agent is compliant with declared policies")
+                .green()
+                .bold()
+        );
         Ok(())
     } else {
         println!("{}", style("Agent has policy violations").red().bold());
@@ -78,11 +88,23 @@ fn print_detailed_policy(policy: &crate::sandbox::SandboxPolicy) {
     println!("{}", style("-".repeat(40)).dim());
 
     println!("\nFilesystem:");
-    println!("  Allowed paths ({})", policy.filesystem.allowed_read_paths.len());
-    for (i, path) in policy.filesystem.allowed_read_paths.iter().take(5).enumerate() {
+    println!(
+        "  Allowed paths ({})",
+        policy.filesystem.allowed_read_paths.len()
+    );
+    for (i, path) in policy
+        .filesystem
+        .allowed_read_paths
+        .iter()
+        .take(5)
+        .enumerate()
+    {
         println!("    {}", style(path).dim());
         if i == 4 && policy.filesystem.allowed_read_paths.len() > 5 {
-            println!("    {} more...", policy.filesystem.allowed_read_paths.len() - 5);
+            println!(
+                "    {} more...",
+                policy.filesystem.allowed_read_paths.len() - 5
+            );
             break;
         }
     }
@@ -92,7 +114,7 @@ fn print_detailed_policy(policy: &crate::sandbox::SandboxPolicy) {
     for domain in &policy.network.allowed_domains {
         println!("    {}", style(domain).dim());
     }
-    
+
     if !policy.network.prohibited_domains.is_empty() {
         println!("  Prohibited domains:");
         for domain in &policy.network.prohibited_domains {
@@ -103,18 +125,35 @@ fn print_detailed_policy(policy: &crate::sandbox::SandboxPolicy) {
     if !policy.network.external_api_allowed {
         println!("  {}", style("(external APIs blocked)").dim());
     }
-    
+
     if !policy.tools.is_empty() {
         println!("\nTools ({}):", policy.tools.len());
         for tool in &policy.tools {
-            println!("  {} - {}", tool.tool_name, style(&tool.risk_category).dim());
+            println!(
+                "  {} - {}",
+                tool.tool_name,
+                style(&tool.risk_category).dim()
+            );
         }
     }
 
     println!("\nData handling:");
-    println!("  Categories: {}", policy.data_restrictions.allowed_data_categories.join(", "));
-    println!("  PII detection: {}", if policy.data_restrictions.pii_detection_required { "enabled" } else { "disabled" });
-    println!("  Retention: {}", policy.data_restrictions.max_retention_period);
+    println!(
+        "  Categories: {}",
+        policy.data_restrictions.allowed_data_categories.join(", ")
+    );
+    println!(
+        "  PII detection: {}",
+        if policy.data_restrictions.pii_detection_required {
+            "enabled"
+        } else {
+            "disabled"
+        }
+    );
+    println!(
+        "  Retention: {}",
+        policy.data_restrictions.max_retention_period
+    );
 
     if !policy.use_cases.prohibited.is_empty() {
         println!("\nProhibited use cases:");

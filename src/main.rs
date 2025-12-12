@@ -2,8 +2,8 @@ use anyhow::Result;
 use beltic::commands::{
     self, credential_id::CredentialIdArgs, dev_init::DevInitArgs, directory::DirectoryArgs,
     fingerprint::FingerprintArgs, http_sign::HttpSignArgs, init::InitArgs, keygen::KeygenArgs,
-    login::LoginArgs, sandbox::SandboxArgs, schema::SchemaArgs, sign::SignArgs,
-    verify::VerifyArgs, whoami::WhoamiArgs,
+    login::LoginArgs, sandbox::SandboxArgs, schema::SchemaArgs, sign::SignArgs, verify::VerifyArgs,
+    whoami::WhoamiArgs,
 };
 use clap::{Parser, Subcommand};
 

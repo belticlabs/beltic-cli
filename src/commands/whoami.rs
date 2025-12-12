@@ -41,8 +41,7 @@ struct DeveloperAttributes {
 
 pub fn run(args: WhoamiArgs) -> Result<()> {
     // Load credentials
-    let api_key = load_credentials()?
-        .context("Not logged in. Run 'beltic login' first.")?;
+    let api_key = load_credentials()?.context("Not logged in. Run 'beltic login' first.")?;
 
     // Load config
     let config = load_config().unwrap_or_default();
@@ -50,7 +49,10 @@ pub fn run(args: WhoamiArgs) -> Result<()> {
     // Call API
     let client = reqwest::blocking::Client::new();
     let response = client
-        .get(format!("{}/v1/developers/me", config.api_url.trim_end_matches('/')))
+        .get(format!(
+            "{}/v1/developers/me",
+            config.api_url.trim_end_matches('/')
+        ))
         .header("X-Api-Key", &api_key)
         .header("Accept", "application/json")
         .send()
@@ -60,9 +62,7 @@ pub fn run(args: WhoamiArgs) -> Result<()> {
         let status = response.status();
 
         if status.as_u16() == 401 || status.as_u16() == 403 {
-            anyhow::bail!(
-                "Session expired or invalid. Run 'beltic login' to re-authenticate."
-            );
+            anyhow::bail!("Session expired or invalid. Run 'beltic login' to re-authenticate.");
         }
 
         anyhow::bail!("API request failed with status {}", status);
@@ -84,11 +84,7 @@ pub fn run(args: WhoamiArgs) -> Result<()> {
     println!("{}", style("-".repeat(40)).dim());
     println!();
 
-    println!(
-        "  {} {}",
-        style("Developer ID:").dim(),
-        developer.data.id
-    );
+    println!("  {} {}", style("Developer ID:").dim(), developer.data.id);
 
     if let Some(name) = &developer.data.attributes.legal_name {
         println!("  {} {}", style("Legal Name:").dim(), name);

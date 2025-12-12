@@ -66,7 +66,9 @@ pub fn run(args: LoginArgs) -> Result<()> {
     let api_key = if let Some(key) = args.api_key {
         key
     } else if args.non_interactive {
-        anyhow::bail!("API key required in non-interactive mode. Use --api-key or set BELTIC_API_KEY");
+        anyhow::bail!(
+            "API key required in non-interactive mode. Use --api-key or set BELTIC_API_KEY"
+        );
     } else {
         prompts.info("Enter your API key from the Beltic Console")?;
         prompts.info("(https://console.beltic.dev/settings)")?;
@@ -97,11 +99,7 @@ pub fn run(args: LoginArgs) -> Result<()> {
             anyhow::bail!("Invalid API key. Please check your key and try again.");
         }
 
-        anyhow::bail!(
-            "API request failed with status {}: {}",
-            status,
-            body
-        );
+        anyhow::bail!("API request failed with status {}: {}", status, body);
     }
 
     let developer: DeveloperMeResponse = response
@@ -118,16 +116,9 @@ pub fn run(args: LoginArgs) -> Result<()> {
 
     // Print success
     println!();
-    println!(
-        "{}",
-        style("Login successful!").green().bold()
-    );
+    println!("{}", style("Login successful!").green().bold());
     println!();
-    println!(
-        "  {} {}",
-        style("Developer ID:").dim(),
-        developer.data.id
-    );
+    println!("  {} {}", style("Developer ID:").dim(), developer.data.id);
 
     if let Some(name) = &developer.data.attributes.legal_name {
         println!("  {} {}", style("Name:").dim(), name);

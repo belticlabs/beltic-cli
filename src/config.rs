@@ -149,8 +149,7 @@ pub fn load_credentials() -> Result<Option<String>> {
 pub fn delete_credentials() -> Result<()> {
     let path = credentials_file_path()?;
     if path.exists() {
-        fs::remove_file(&path)
-            .with_context(|| format!("failed to delete {}", path.display()))?;
+        fs::remove_file(&path).with_context(|| format!("failed to delete {}", path.display()))?;
     }
     Ok(())
 }
