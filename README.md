@@ -438,6 +438,59 @@ beltic directory thumbprint --public-key public.pem
 
 **Output:** The JWK thumbprint (RFC 7638) used as the key identifier in HTTP Message Signatures.
 
+### `login` - Authenticate with Beltic Platform
+
+Authenticate with your Beltic API key to access platform features.
+
+```bash
+# Interactive mode (default)
+beltic login
+# → Prompts for API key (masked input)
+# → Validates against Beltic platform
+# → Stores credentials in ~/.beltic/credentials
+
+# Non-interactive mode (for CI/CD)
+beltic login --api-key YOUR_API_KEY
+
+# Custom API URL
+beltic login --api-url https://custom.api.url
+```
+
+**Options:**
+- `--api-key <KEY>` - API key for authentication
+- `--api-url <URL>` - Custom API URL (default: https://api.beltic.dev)
+- `--non-interactive` - Disable prompts
+
+**Credential Storage:**
+- Credentials stored in `~/.beltic/credentials` with `0600` permissions
+- Configuration saved to `~/.beltic/config.yaml`
+
+### `whoami` - Display Current Identity
+
+Show information about the currently authenticated developer.
+
+```bash
+# Display current identity
+beltic whoami
+
+# Output as JSON
+beltic whoami --json
+```
+
+**Options:**
+- `--json` - Output as JSON for programmatic use
+
+**Output:**
+```
+Current Developer
+----------------------------------------
+
+  Developer ID: dev_m5x7k9p_a1b2c3d4e5f6
+  Legal Name: Acme Corporation
+  KYB Tier: tier_2 (Enhanced)
+  Verified: Verified
+```
+
 ## Configuration
 
 ### `.beltic.yaml`
@@ -689,6 +742,7 @@ beltic-cli/
 │   ├── main.rs              # CLI entry point
 │   ├── lib.rs               # Library exports
 │   ├── credential.rs        # Credential building and validation
+│   ├── config.rs             # Configuration and credential management
 │   ├── commands/            # Command implementations
 │   │   ├── init.rs          # Initialize manifest
 │   │   ├── fingerprint.rs   # Generate fingerprint
@@ -697,6 +751,8 @@ beltic-cli/
 │   │   ├── verify.rs        # Verify signatures (interactive mode)
 │   │   ├── http_sign.rs     # HTTP request signing (Web Bot Auth)
 │   │   ├── directory.rs     # Key directory management
+│   │   ├── login.rs         # Platform authentication
+│   │   ├── whoami.rs        # Display current identity
 │   │   ├── prompts.rs       # Shared interactive prompts
 │   │   └── discovery.rs     # Key/token auto-discovery
 │   ├── manifest/            # Manifest handling
