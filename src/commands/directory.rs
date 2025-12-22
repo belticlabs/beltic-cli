@@ -4,6 +4,11 @@
 
 use std::{fs, path::PathBuf, time::SystemTime};
 
+/// Directory signature validity duration in seconds.
+/// This value is used for both the signature `expires` parameter and Cache-Control max-age
+/// to ensure cached responses always have valid signatures.
+const DIRECTORY_SIGNATURE_LIFETIME_SECS: u64 = 300; // 5 minutes
+
 use anyhow::{bail, Context, Result};
 use base64::{engine::general_purpose::URL_SAFE_NO_PAD, Engine};
 use clap::{Args, Subcommand};
@@ -190,7 +195,7 @@ fn run_generate(args: GenerateArgs) -> Result<()> {
             .context("system time error")?
             .as_secs();
         let created = now;
-        let expires = now + 10; // Directory signatures are short-lived
+        let expires = now + DIRECTORY_SIGNATURE_LIFETIME_SECS;
 
         // Generate nonce
         let mut nonce_bytes = [0u8; 32];
@@ -217,7 +222,7 @@ fn run_generate(args: GenerateArgs) -> Result<()> {
         println!("Content-Type: application/http-message-signatures-directory+json");
         println!("Signature: sig1=:{}:", signature_b64);
         println!("Signature-Input: sig1={}", signature_params);
-        println!("Cache-Control: max-age=86400");
+        println!("Cache-Control: max-age={}", DIRECTORY_SIGNATURE_LIFETIME_SECS);
     }
 
     Ok(())
