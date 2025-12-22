@@ -293,7 +293,16 @@ pub fn generate_complete_defaults(
 
     // Set operational fields
     manifest.incident_response_contact = "security@example.com".to_string(); // Will be replaced in interactive mode
-    manifest.incident_response_slo = ManifestTemplates::default_incident_response_slo(&version);
+
+    // Convert current_status to string for SLO lookup (not version!)
+    let status_str = match manifest.current_status {
+        AgentStatus::Production => "production",
+        AgentStatus::Beta => "beta",
+        AgentStatus::Alpha => "alpha",
+        AgentStatus::Internal => "alpha", // Treat internal same as alpha
+        AgentStatus::Deprecated | AgentStatus::Retired => "low_risk",
+    };
+    manifest.incident_response_slo = ManifestTemplates::default_incident_response_slo(status_str);
     manifest.deprecation_policy = ManifestTemplates::deprecation_policy_template();
     manifest.human_oversight_mode = oversight_mode.clone();
     manifest.fail_safe_behavior = ManifestTemplates::failsafe_behavior_template(&oversight_mode);
@@ -310,4 +319,79 @@ pub fn generate_complete_defaults(
     manifest.prohibited_use_cases = Some(ManifestTemplates::default_prohibited_use_cases());
 
     manifest
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_default_incident_response_slo_production() {
+        assert_eq!(
+            ManifestTemplates::default_incident_response_slo("production"),
+            "PT2H"
+        );
+        assert_eq!(
+            ManifestTemplates::default_incident_response_slo("high_risk"),
+            "PT2H"
+        );
+    }
+
+    #[test]
+    fn test_default_incident_response_slo_beta() {
+        assert_eq!(
+            ManifestTemplates::default_incident_response_slo("beta"),
+            "PT4H"
+        );
+        assert_eq!(
+            ManifestTemplates::default_incident_response_slo("moderate_risk"),
+            "PT4H"
+        );
+    }
+
+    #[test]
+    fn test_default_incident_response_slo_alpha() {
+        assert_eq!(
+            ManifestTemplates::default_incident_response_slo("alpha"),
+            "PT8H"
+        );
+        assert_eq!(
+            ManifestTemplates::default_incident_response_slo("low_risk"),
+            "PT8H"
+        );
+    }
+
+    #[test]
+    fn test_default_incident_response_slo_version_string_not_accepted() {
+        // Version strings should NOT match any risk level and should fall through to default
+        // This test documents that version strings are not valid risk levels
+        assert_eq!(
+            ManifestTemplates::default_incident_response_slo("1.0.0"),
+            "PT24H"
+        );
+        assert_eq!(
+            ManifestTemplates::default_incident_response_slo("0.5.0-beta"),
+            "PT24H"
+        );
+    }
+
+    #[test]
+    fn test_generate_complete_defaults_uses_status_not_version() {
+        // Regression test: ensure incident_response_slo is based on status, not version
+        let manifest = generate_complete_defaults(
+            "Test Agent".to_string(),
+            "1.0.0".to_string(), // This version string should NOT affect the SLO
+            ArchitectureType::SingleAgent,
+            DeploymentType::Standalone,
+        );
+
+        // Default status is Alpha (from AgentManifest::new_with_defaults)
+        assert_eq!(manifest.current_status, AgentStatus::Alpha);
+
+        // SLO should be PT8H (alpha), NOT PT24H (which would happen if version was used)
+        assert_eq!(
+            manifest.incident_response_slo, "PT8H",
+            "Incident response SLO should be based on status (alpha=PT8H), not version string"
+        );
+    }
 }

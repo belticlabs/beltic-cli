@@ -211,7 +211,7 @@ pub struct GenerationMetadata {
 
 // Enums for various fields
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum AgentStatus {
     Production,
