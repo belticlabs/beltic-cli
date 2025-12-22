@@ -842,8 +842,8 @@ fn convert_modality(modality: &Modality) -> CredModality {
         Modality::Image => CredModality::Image,
         Modality::Audio => CredModality::Audio,
         Modality::Video => CredModality::Video,
-        Modality::Code => CredModality::Text, // Map Code to Text
-        Modality::StructuredData => CredModality::Text, // Map StructuredData to Text
+        Modality::Code => CredModality::Code,
+        Modality::StructuredData => CredModality::StructuredData,
     }
 }
 
@@ -871,5 +871,56 @@ fn convert_agent_status(status: &AgentStatus) -> CredAgentStatus {
         AgentStatus::Deprecated => CredAgentStatus::Deprecated,
         AgentStatus::Retired => CredAgentStatus::Retired,
         AgentStatus::Internal => CredAgentStatus::Alpha, // Map Internal to Alpha
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_convert_modality_preserves_all_variants() {
+        // Verify all modality types are preserved during conversion
+        assert_eq!(convert_modality(&Modality::Text), CredModality::Text);
+        assert_eq!(convert_modality(&Modality::Image), CredModality::Image);
+        assert_eq!(convert_modality(&Modality::Audio), CredModality::Audio);
+        assert_eq!(convert_modality(&Modality::Video), CredModality::Video);
+        assert_eq!(convert_modality(&Modality::Code), CredModality::Code);
+        assert_eq!(
+            convert_modality(&Modality::StructuredData),
+            CredModality::StructuredData
+        );
+    }
+
+    #[test]
+    fn test_convert_modality_code_not_text() {
+        // Regression test: Code modality must NOT be converted to Text
+        let result = convert_modality(&Modality::Code);
+        assert_ne!(
+            result,
+            CredModality::Text,
+            "Code modality should not be converted to Text"
+        );
+        assert_eq!(
+            result,
+            CredModality::Code,
+            "Code modality should be preserved as Code"
+        );
+    }
+
+    #[test]
+    fn test_convert_modality_structured_data_not_text() {
+        // Regression test: StructuredData modality must NOT be converted to Text
+        let result = convert_modality(&Modality::StructuredData);
+        assert_ne!(
+            result,
+            CredModality::Text,
+            "StructuredData modality should not be converted to Text"
+        );
+        assert_eq!(
+            result,
+            CredModality::StructuredData,
+            "StructuredData modality should be preserved as StructuredData"
+        );
     }
 }
