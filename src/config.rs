@@ -7,7 +7,7 @@ use std::io::Write;
 use std::path::PathBuf;
 
 #[cfg(unix)]
-use std::os::unix::fs::OpenOptionsExt;
+use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 
 use anyhow::{Context, Result};
 use directories::BaseDirs;
@@ -20,7 +20,7 @@ const CREDENTIALS_FILE: &str = "credentials";
 /// Beltic CLI configuration
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BelticConfig {
-    /// API URL (default: https://api.beltic.dev)
+    /// API URL (default: https://kya.beltic.app)
     #[serde(default = "default_api_url")]
     pub api_url: String,
 
@@ -38,7 +38,7 @@ impl Default for BelticConfig {
 }
 
 fn default_api_url() -> String {
-    "https://api.beltic.dev".to_string()
+    "https://kya.beltic.app".to_string()
 }
 
 /// Get the path to the beltic config directory (~/.beltic/)
@@ -105,11 +105,17 @@ pub fn save_credentials(api_key: &str) -> Result<()> {
             .write(true)
             .create(true)
             .truncate(true)
-            .mode(0o600) // Owner read/write only
+            .mode(0o600) // Owner read/write only (for new files)
             .open(&path)
             .with_context(|| format!("failed to create credentials file {}", path.display()))?;
         file.write_all(contents.as_bytes())
             .with_context(|| format!("failed to write credentials to {}", path.display()))?;
+
+        // Explicitly set permissions to handle existing files
+        // (mode() only applies to newly created files per OpenOptionsExt docs)
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o600))
+            .with_context(|| format!("failed to set permissions on {}", path.display()))?;
+
         return Ok(());
     }
 
@@ -161,6 +167,6 @@ mod tests {
     #[test]
     fn test_default_api_url() {
         let config = BelticConfig::default();
-        assert_eq!(config.api_url, "https://api.beltic.dev");
+        assert_eq!(config.api_url, "https://kya.beltic.app");
     }
 }

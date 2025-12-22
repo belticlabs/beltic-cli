@@ -1,7 +1,7 @@
 use std::{fs, io::Write, path::PathBuf};
 
 #[cfg(unix)]
-use std::os::unix::fs::OpenOptionsExt;
+use std::os::unix::fs::{OpenOptionsExt, PermissionsExt};
 
 use anyhow::{Context, Result};
 use clap::Args;
@@ -246,11 +246,17 @@ fn write_private_key(path: &PathBuf, contents: &[u8]) -> Result<()> {
             .write(true)
             .create(true)
             .truncate(true)
-            .mode(0o600) // Owner read/write only
+            .mode(0o600) // Owner read/write only (for new files)
             .open(path)
             .with_context(|| format!("failed to create private key file {}", path.display()))?;
         file.write_all(contents)
             .with_context(|| format!("failed to write private key to {}", path.display()))?;
+
+        // Explicitly set permissions to handle existing files
+        // (mode() only applies to newly created files per OpenOptionsExt docs)
+        fs::set_permissions(path, fs::Permissions::from_mode(0o600))
+            .with_context(|| format!("failed to set permissions on {}", path.display()))?;
+
         return Ok(());
     }
 
@@ -259,5 +265,52 @@ fn write_private_key(path: &PathBuf, contents: &[u8]) -> Result<()> {
         fs::write(path, contents)
             .with_context(|| format!("failed to write private key to {}", path.display()))?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[cfg(unix)]
+    mod unix_tests {
+        use super::*;
+        use std::os::unix::fs::PermissionsExt;
+        use tempfile::TempDir;
+
+        #[test]
+        fn test_write_private_key_sets_permissions_on_new_file() {
+            let temp_dir = TempDir::new().unwrap();
+            let key_path = temp_dir.path().join("new-private.pem");
+
+            write_private_key(&key_path, b"secret key").unwrap();
+
+            let perms = fs::metadata(&key_path).unwrap().permissions().mode() & 0o777;
+            assert_eq!(perms, 0o600, "New file should have 0o600 permissions");
+        }
+
+        #[test]
+        fn test_write_private_key_updates_permissions_on_existing_file() {
+            let temp_dir = TempDir::new().unwrap();
+            let key_path = temp_dir.path().join("existing-private.pem");
+
+            // Create a file with permissive permissions (world-readable)
+            fs::write(&key_path, b"old key").unwrap();
+            fs::set_permissions(&key_path, fs::Permissions::from_mode(0o644)).unwrap();
+
+            let initial_perms = fs::metadata(&key_path).unwrap().permissions().mode() & 0o777;
+            assert_eq!(initial_perms, 0o644, "Setup: file should be world-readable");
+
+            // Overwrite using write_private_key
+            write_private_key(&key_path, b"new secret key").unwrap();
+
+            // Verify permissions are now 0o600
+            let final_perms = fs::metadata(&key_path).unwrap().permissions().mode() & 0o777;
+            assert_eq!(
+                final_perms, 0o600,
+                "Permissions should be 0o600 after overwriting, but are 0o{:o}",
+                final_perms
+            );
+        }
     }
 }
