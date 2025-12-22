@@ -120,7 +120,14 @@ fn run_non_interactive(args: VerifyArgs) -> Result<()> {
 
     let token = load_token(&token_input)?;
 
-    match verify_jws(token.trim(), &key) {
+    // Pass audience to verify_jws for RFC 7519 compliant validation
+    let expected_audience = if args.audience.is_empty() {
+        None
+    } else {
+        Some(args.audience.as_slice())
+    };
+
+    match verify_jws(token.trim(), &key, expected_audience) {
         Ok(verified) => {
             if let Err(err) = validate_verified(verified, &args) {
                 eprintln!("INVALID: {err}");
@@ -148,7 +155,14 @@ fn do_verify(args: &VerifyArgs, prompts: &CommandPrompts) -> Result<()> {
 
     prompts.info(&format!("Verifying with key: {}", key.display()))?;
 
-    match verify_jws(token.trim(), key) {
+    // Pass audience to verify_jws for RFC 7519 compliant validation
+    let expected_audience = if args.audience.is_empty() {
+        None
+    } else {
+        Some(args.audience.as_slice())
+    };
+
+    match verify_jws(token.trim(), key, expected_audience) {
         Ok(verified) => {
             println!();
             println!("{}", style("Verification successful!").green().bold());
