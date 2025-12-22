@@ -53,6 +53,12 @@ pub struct HttpSignArgs {
     /// Output format: headers (default) or curl
     #[arg(long, default_value = "headers")]
     pub format: OutputFormat,
+
+    /// Dictionary key for Signature-Agent header (default: "agent")
+    /// Per draft-meunier-http-message-signatures-directory-04, Signature-Agent
+    /// is a Dictionary Structured Header with named members.
+    #[arg(long, default_value = "agent")]
+    pub signature_agent_key: String,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -140,13 +146,17 @@ pub fn run(args: HttpSignArgs) -> Result<()> {
         headers.insert("content-digest".to_string(), digest);
     }
 
+    // Build the signature-agent component identifier with ;key parameter per RFC 9421 Section 2.1.2
+    // For Dictionary Structured Headers, the component must specify which member to sign
+    let signature_agent_component = format!("signature-agent;key=\"{}\"", args.signature_agent_key);
+
     // Determine components to sign
     let mut components: Vec<String> = if args.component.is_empty() {
         vec![
             "@method".to_string(),
             "@authority".to_string(),
             "@path".to_string(),
-            "signature-agent".to_string(),
+            signature_agent_component.clone(),
         ]
     } else {
         args.component.clone()
@@ -156,8 +166,12 @@ pub fn run(args: HttpSignArgs) -> Result<()> {
     if !components.contains(&"@authority".to_string()) {
         components.insert(0, "@authority".to_string());
     }
-    if !components.contains(&"signature-agent".to_string()) {
-        components.push("signature-agent".to_string());
+    // Check for signature-agent component (with or without key parameter)
+    let has_signature_agent = components
+        .iter()
+        .any(|c| c.starts_with("signature-agent"));
+    if !has_signature_agent {
+        components.push(signature_agent_component.clone());
     }
     if body.is_some() && !components.contains(&"content-digest".to_string()) {
         components.push("content-digest".to_string());
@@ -190,7 +204,10 @@ pub fn run(args: HttpSignArgs) -> Result<()> {
     // Build signature base
     let mut signature_base_lines: Vec<String> = Vec::new();
     for component in &components {
-        let value = match component.as_str() {
+        // Extract the base component name (before any parameters like ;key="...")
+        let component_base = component.split(';').next().unwrap_or(component);
+
+        let value = match component_base {
             "@method" => args.method.to_uppercase(),
             "@authority" => authority.clone(),
             "@scheme" => parsed_url.scheme().to_string(),
@@ -204,11 +221,14 @@ pub fn run(args: HttpSignArgs) -> Result<()> {
             }
             "@target-uri" => args.url.clone(),
             "@request-target" => format!("{} {}{}", args.method.to_lowercase(), path, query),
-            "signature-agent" => format!("\"{}\"", args.key_directory),
+            "signature-agent" => {
+                // For dictionary members, the value is the String Item (quoted URI)
+                format!("\"{}\"", args.key_directory)
+            }
             _ => {
-                // It's a header
-                headers.get(component).cloned().ok_or_else(|| {
-                    anyhow::anyhow!("component '{}' not found in headers", component)
+                // It's a header - use base name for lookup
+                headers.get(component_base).cloned().ok_or_else(|| {
+                    anyhow::anyhow!("component '{}' not found in headers", component_base)
                 })?
             }
         };
@@ -222,7 +242,8 @@ pub fn run(args: HttpSignArgs) -> Result<()> {
     let signature_b64 = URL_SAFE_NO_PAD.encode(signature.to_bytes());
 
     // Output
-    let signature_agent_header = format!("\"{}\"", args.key_directory);
+    // Signature-Agent is a Dictionary Structured Header per draft-meunier-http-message-signatures-directory-04
+    let signature_agent_header = format!("{}=\"{}\"", args.signature_agent_key, args.key_directory);
     let signature_input_header = format!("sig1={}", signature_params);
     let signature_header = format!("sig1=:{}:", signature_b64);
 
