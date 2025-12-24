@@ -1,3 +1,5 @@
+pub mod api_key;
+pub mod auth;
 pub mod credential_id;
 pub mod dev_init;
 pub mod directory;
@@ -6,8 +8,8 @@ pub mod fingerprint;
 pub mod http_sign;
 pub mod init;
 pub mod keygen;
-pub mod login;
 pub mod prompts;
+pub mod register;
 pub mod sandbox;
 pub mod schema;
 pub mod sign;

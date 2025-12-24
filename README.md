@@ -438,27 +438,30 @@ beltic directory thumbprint --public-key public.pem
 
 **Output:** The JWK thumbprint (RFC 7638) used as the key identifier in HTTP Message Signatures.
 
-### `login` - Authenticate with Beltic Platform
+### `login` - Authenticate with KYA Platform
 
-Authenticate with your Beltic API key to access platform features.
+Authenticate with your API key to access KYA platform features.
 
 ```bash
 # Interactive mode (default)
 beltic login
 # → Prompts for API key (masked input)
-# → Validates against Beltic platform
+# → Validates against KYA platform
 # → Stores credentials in ~/.beltic/credentials
 
 # Non-interactive mode (for CI/CD)
 beltic login --api-key YOUR_API_KEY
 
-# Custom API URL
-beltic login --api-url https://custom.api.url
+# Custom API URL (for local testing)
+beltic login --api-url http://localhost:3001
+
+# Production (default)
+beltic login --api-url https://kya.beltic.app
 ```
 
 **Options:**
-- `--api-key <KEY>` - API key for authentication
-- `--api-url <URL>` - Custom API URL (default: https://api.beltic.dev)
+- `--api-key <KEY>` - API key for authentication (create through KYA platform first)
+- `--api-url <URL>` - Custom API URL (default: https://kya.beltic.app, or use http://localhost:3001 for local testing)
 - `--non-interactive` - Disable prompts
 
 **Credential Storage:**

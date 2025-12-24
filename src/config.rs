@@ -20,7 +20,8 @@ const CREDENTIALS_FILE: &str = "credentials";
 /// Beltic CLI configuration
 #[derive(Debug, Serialize, Deserialize)]
 pub struct BelticConfig {
-    /// API URL (default: https://kya.beltic.app)
+    /// Console URL (default: https://console.beltic.app)
+    /// The console serves both web UI and API endpoints for CLI tools
     #[serde(default = "default_api_url")]
     pub api_url: String,
 
@@ -38,7 +39,7 @@ impl Default for BelticConfig {
 }
 
 fn default_api_url() -> String {
-    "https://kya.beltic.app".to_string()
+    "https://console.beltic.app".to_string()
 }
 
 /// Get the path to the beltic config directory (~/.beltic/)
@@ -92,12 +93,12 @@ pub fn save_config(config: &BelticConfig) -> Result<()> {
     Ok(())
 }
 
-/// Save API key to credentials file with restricted permissions (0600)
-pub fn save_credentials(api_key: &str) -> Result<()> {
+/// Save access token to credentials file with restricted permissions (0600)
+pub fn save_credentials(access_token: &str) -> Result<()> {
     ensure_config_dir()?;
     let path = credentials_file_path()?;
 
-    let contents = format!("BELTIC_API_KEY={}\n", api_key);
+    let contents = format!("BELTIC_ACCESS_TOKEN={}\n", access_token);
 
     #[cfg(unix)]
     {
@@ -127,7 +128,7 @@ pub fn save_credentials(api_key: &str) -> Result<()> {
     }
 }
 
-/// Load API key from credentials file
+/// Load access token from credentials file
 pub fn load_credentials() -> Result<Option<String>> {
     let path = credentials_file_path()?;
     if !path.exists() {
@@ -140,10 +141,10 @@ pub fn load_credentials() -> Result<Option<String>> {
     // Parse simple KEY=VALUE format
     for line in contents.lines() {
         let line = line.trim();
-        if line.starts_with("BELTIC_API_KEY=") {
-            let key = line.strip_prefix("BELTIC_API_KEY=").unwrap_or("");
-            if !key.is_empty() {
-                return Ok(Some(key.to_string()));
+        if line.starts_with("BELTIC_ACCESS_TOKEN=") {
+            let token = line.strip_prefix("BELTIC_ACCESS_TOKEN=").unwrap_or("");
+            if !token.is_empty() {
+                return Ok(Some(token.to_string()));
             }
         }
     }
@@ -167,6 +168,6 @@ mod tests {
     #[test]
     fn test_default_api_url() {
         let config = BelticConfig::default();
-        assert_eq!(config.api_url, "https://kya.beltic.app");
+        assert_eq!(config.api_url, "https://console.beltic.app");
     }
 }

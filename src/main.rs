@@ -1,8 +1,9 @@
 use anyhow::Result;
 use beltic::commands::{
-    self, credential_id::CredentialIdArgs, dev_init::DevInitArgs, directory::DirectoryArgs,
-    fingerprint::FingerprintArgs, http_sign::HttpSignArgs, init::InitArgs, keygen::KeygenArgs,
-    login::LoginArgs, sandbox::SandboxArgs, schema::SchemaArgs, sign::SignArgs, verify::VerifyArgs,
+    self, api_key::ApiKeyArgs, auth::AuthArgs, credential_id::CredentialIdArgs,
+    dev_init::DevInitArgs, directory::DirectoryArgs, fingerprint::FingerprintArgs,
+    http_sign::HttpSignArgs, init::InitArgs, keygen::KeygenArgs, register::RegisterArgs,
+    sandbox::SandboxArgs, schema::SchemaArgs, sign::SignArgs, verify::VerifyArgs,
     whoami::WhoamiArgs,
 };
 use clap::{Parser, Subcommand};
@@ -42,8 +43,12 @@ enum Command {
     Schema(SchemaArgs),
     /// Run agent in sandboxed environment for testing
     Sandbox(SandboxArgs),
-    /// Authenticate with the Beltic platform
-    Login(LoginArgs),
+    /// Register a new developer account
+    Register(RegisterArgs),
+    /// Manage API keys
+    ApiKey(ApiKeyArgs),
+    /// Authentication commands (login, logout)
+    Auth(AuthArgs),
     /// Display current authenticated developer info
     Whoami(WhoamiArgs),
 }
@@ -63,7 +68,9 @@ fn main() -> Result<()> {
         Command::CredentialId(args) => commands::credential_id::run(args)?,
         Command::Schema(args) => commands::schema::run(args)?,
         Command::Sandbox(args) => commands::sandbox::run(args)?,
-        Command::Login(args) => commands::login::run(args)?,
+        Command::Register(args) => commands::register::run(args)?,
+        Command::ApiKey(args) => commands::api_key::run(args)?,
+        Command::Auth(args) => commands::auth::run(args)?,
         Command::Whoami(args) => commands::whoami::run(args)?,
     };
 
