@@ -1,0 +1,145 @@
+---
+alwaysApply: true
+description: GitHub Actions workflow guidelines and validation
+---
+
+# GitHub Actions Workflow Guidelines
+
+## Workflow Requirements
+
+### Required Workflows by Repository Type
+
+#### Rust Projects (beltic-cli)
+- ✅ **CI workflow**: Test, lint, build on push/PR
+- ✅ **Release workflow**: Build binaries for all platforms on tag push
+- ✅ **Sync schemas workflow**: Weekly sync from beltic-spec (if uses schemas)
+
+#### TypeScript/Node Projects (beltic-sdk, wizard, kya-platform, nasa)
+- ✅ **CI workflow**: Test, lint, type-check, build on push/PR
+- ✅ **Release workflow**: Publish to npm on release (if applicable)
+- ✅ **Sync schemas workflow**: Weekly sync from beltic-spec (if uses schemas)
+
+#### Python Projects (fact-python)
+- ✅ **CI workflow**: Test, lint, type-check on multiple Python versions
+- ✅ **Release workflow**: Publish to PyPI on tag push
+- ✅ **Sync schemas workflow**: Weekly sync from beltic-spec (if uses schemas)
+
+#### Specification Projects (beltic-spec)
+- ✅ **Validate workflow**: Validate schemas and examples on push/PR
+
+## Workflow Best Practices
+
+### Common Patterns
+
+1. **Use latest action versions**:
+   - `actions/checkout@v4` (not v3 or v2)
+   - `actions/setup-node@v4` (not v3)
+   - `actions/setup-python@v5` (not v4)
+   - `actions/cache@v4` (not v3)
+
+2. **Cache dependencies**:
+   - Rust: Cache `target/` and cargo registry
+   - Node: Use `cache: 'npm'` or `cache: 'pnpm'`
+   - Python: Use `cache: 'pip'`
+
+3. **Set appropriate permissions**:
+   ```yaml
+   permissions:
+     contents: write  # For releases
+     pull-requests: write  # For PR creation
+     id-token: write  # For trusted publishing
+   ```
+
+4. **Use matrix strategies** for multi-version testing:
+   ```yaml
+   strategy:
+     matrix:
+       python-version: ['3.10', '3.11', '3.12']
+   ```
+
+5. **Fail fast** when appropriate:
+   ```yaml
+   strategy:
+     fail-fast: false  # For release builds
+   ```
+
+### Security Best Practices
+
+1. **Never commit secrets**: Use GitHub Secrets
+2. **Use trusted publishing** when available (PyPI, npm)
+3. **Limit permissions**: Only grant necessary permissions
+4. **Pin action versions**: Use specific versions, not `@main` or `@master`
+
+### Testing Workflows Locally
+
+Use `act` to test workflows locally before pushing:
+
+```bash
+# List available workflows
+act -l
+
+# Run a specific workflow
+act -W .github/workflows/ci.yml
+
+# Run a specific job
+act -j test
+
+# Run with specific event
+act push -e .github/workflows/ci.yml
+
+# Run with secrets (use .secrets file)
+act --secret-file .secrets
+```
+
+## Workflow Validation Checklist
+
+Before committing a workflow:
+
+- [ ] Uses latest action versions
+- [ ] Has appropriate permissions
+- [ ] Caches dependencies
+- [ ] Tests pass locally with `act`
+- [ ] No hardcoded secrets
+- [ ] Proper error handling
+- [ ] Appropriate triggers (push, PR, schedule)
+- [ ] Path filters if needed (to avoid unnecessary runs)
+
+## Repository-Specific Workflows
+
+### beltic-cli
+- **CI**: Test, lint, build
+- **Release**: Build binaries for macOS (arm64, x86_64) and Linux (arm64, x86_64)
+- **Sync Schemas**: Weekly sync from beltic-spec
+
+### beltic-sdk
+- **CI**: Test, lint, type-check, build
+- **Release**: Semantic release + npm publish (monorepo)
+- **Sync Schemas**: Weekly sync + regenerate TypeScript types
+
+### fact-python
+- **CI**: Test on Python 3.10, 3.11, 3.12
+- **Release**: Build and publish to PyPI
+- **Sync Schemas**: Weekly sync from beltic-spec
+
+### beltic-spec
+- **Validate**: Validate schemas and examples (Node.js + Python)
+
+### wizard
+- **Build**: Test and build
+- **Publish**: Publish to npm
+- **PR Conventional Commit**: Validate commit messages
+
+## Missing Workflows
+
+Repositories that may need workflows:
+- **kya-platform**: May need CI workflow
+- **nasa**: May need CI workflow for documentation
+- **homebrew-tap**: May need validation workflow
+
+## Common Issues
+
+1. **Outdated action versions**: Update to latest v4/v5
+2. **Missing permissions**: Add required permissions
+3. **No caching**: Add dependency caching
+4. **Hardcoded secrets**: Move to GitHub Secrets
+5. **Missing path filters**: Add path filters to reduce unnecessary runs
